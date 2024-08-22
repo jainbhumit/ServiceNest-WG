@@ -1,0 +1,34 @@
+[
+  {
+    "id": "c8da416a-0436-4643-b50a-f5762565880c",
+    "name": "tushar",
+    "email": "tushar@gmail.com",
+    "password": "$2a$10$K98RsXiX80h8ahQ6Cr5wrOynFrSZR.heKd/qfu8FfHY72Az5pFuX.",
+    "role": "ServiceProvider",
+    "address": "noida sector 135",
+    "contact": "5550825084",
+    "latitude": 432,
+    "longitude": 534,
+    "services_offered": [
+      {
+        "id": "625",
+        "name": "plumber",
+        "description": "plumber",
+        "price": 200,
+        "provider_id": ""
+      }
+    ],
+    "rating": 4,
+    "reviews": [
+      {
+        "id": "7110",
+        "service_id": "plumber",
+        "householder_id": "ceadc8ea-6c4c-4921-88d7-ee99c7786cca",
+        "rating": 4,
+        "comments": "good",
+        "review_date": "2024-08-22T16:41:57.9342368+05:30"
+      }
+    ],
+    "availability": true
+  }
+]
