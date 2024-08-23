@@ -39,5 +39,46 @@
         }
       ]
     }
+  },
+  {
+    "id": "6921",
+    "householder_id": "ceadc8ea-6c4c-4921-88d7-ee99c7786cca",
+    "service_id": "maid",
+    "service_provider_id": "7decc575-7a8b-4c41-a10e-c4fd4732d576",
+    "requested_time": "2024-08-23T12:09:59.1689058+05:30",
+    "scheduled_time": "0001-01-01T00:00:00Z",
+    "status": "Cancelled",
+    "provider_details": {
+      "name": "palak",
+      "contact": "6789508478",
+      "address": "sector 135",
+      "rating": 0,
+      "reviews": []
+    }
+  },
+  {
+    "id": "4096",
+    "householder_id": "ceadc8ea-6c4c-4921-88d7-ee99c7786cca",
+    "service_id": "maid",
+    "service_provider_id": "",
+    "requested_time": "2024-08-23T13:54:44.2596683+05:30",
+    "scheduled_time": "0001-01-01T00:00:00Z",
+    "status": "Cancelled"
+  },
+  {
+    "id": "2272",
+    "householder_id": "ceadc8ea-6c4c-4921-88d7-ee99c7786cca",
+    "service_id": "carpenter",
+    "service_provider_id": "7decc575-7a8b-4c41-a10e-c4fd4732d576",
+    "requested_time": "2024-08-23T14:23:04.32289+05:30",
+    "scheduled_time": "0001-01-01T00:00:00Z",
+    "status": "Accepted",
+    "provider_details": {
+      "name": "palak",
+      "contact": "6789508478",
+      "address": "sector 135",
+      "rating": 0,
+      "reviews": []
+    }
   }
 ]

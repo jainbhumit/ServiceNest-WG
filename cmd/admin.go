@@ -114,7 +114,7 @@ func viewReports(adminService *service.AdminService) {
 // DeactivateUserAccount allows the admin to deactivate a user account
 func deactivateUserAccount(adminService *service.AdminService) {
 	var userID string
-	fmt.Print("Enter User ID to deactivate: ")
+	fmt.Print("Enter ServiceProvider ID to deactivate: ")
 	fmt.Scanln(&userID)
 
 	err := adminService.DeactivateAccount(userID)

@@ -163,5 +163,16 @@
     "contact": "8934231234",
     "latitude": 2,
     "longitude": 3
+  },
+  {
+    "id": "7decc575-7a8b-4c41-a10e-c4fd4732d576",
+    "name": "palak",
+    "email": "palak@gmail.com",
+    "password": "$2a$10$vVShpRny91n0fPUUaVSU8.UizttrMFq.9nnCCC2KtsPK9jLY96gUe",
+    "role": "ServiceProvider",
+    "address": "sector 135",
+    "contact": "6789508478",
+    "latitude": 0,
+    "longitude": 0
   }
 ]

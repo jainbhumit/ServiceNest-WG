@@ -5,5 +5,12 @@
     "description": "food",
     "price": 500,
     "provider_id": ""
+  },
+  {
+    "id": "6751",
+    "name": "maid",
+    "description": "food",
+    "price": 500,
+    "provider_id": ""
   }
 ]

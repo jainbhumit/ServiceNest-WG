@@ -84,9 +84,41 @@
         "rating": 4,
         "comments": "good",
         "review_date": "2024-08-23T10:54:59.5176778+05:30"
+      },
+      {
+        "id": "4525",
+        "service_id": "maid",
+        "householder_id": "ceadc8ea-6c4c-4921-88d7-ee99c7786cca",
+        "rating": 4,
+        "comments": "Good",
+        "review_date": "2024-08-23T14:06:15.7550137+05:30"
       }
     ],
     "availability": true,
     "is_active": true
+  },
+  {
+    "id": "7decc575-7a8b-4c41-a10e-c4fd4732d576",
+    "name": "palak",
+    "email": "palak@gmail.com",
+    "password": "$2a$10$vVShpRny91n0fPUUaVSU8.UizttrMFq.9nnCCC2KtsPK9jLY96gUe",
+    "role": "ServiceProvider",
+    "address": "sector 135",
+    "contact": "6789508478",
+    "latitude": 0,
+    "longitude": 0,
+    "services_offered": [
+      {
+        "id": "6751",
+        "name": "maid",
+        "description": "food",
+        "price": 500,
+        "provider_id": ""
+      }
+    ],
+    "rating": 0,
+    "reviews": [],
+    "availability": true,
+    "is_active": false
   }
 ]
