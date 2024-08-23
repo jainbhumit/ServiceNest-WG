@@ -185,6 +185,7 @@ func (s *ServiceProviderService) AcceptServiceRequest(providerID, requestID stri
 		Contact: provider.Contact,
 		Address: provider.Address,
 		Rating:  provider.Rating,
+		Reviews: provider.Reviews,
 	}
 
 	// Save the updated service request
@@ -240,4 +241,16 @@ func (s *ServiceProviderService) ViewServices(providerID string) ([]model.Servic
 }
 func (s *ServiceProviderService) GetServiceByID(serviceID string) (*model.Service, error) {
 	return s.serviceRepo.GetServiceByID(serviceID)
+}
+
+// ViewReviews retrieves all reviews for a specific service provider
+func (s *ServiceProviderService) ViewReviews(providerID string) ([]*model.Review, error) {
+	// Get the service provider
+	provider, err := s.serviceProviderRepo.GetProviderByID(providerID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return all reviews for this provider
+	return provider.Reviews, nil
 }

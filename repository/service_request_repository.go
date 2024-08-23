@@ -80,8 +80,26 @@ func (repo *ServiceRequestRepository) UpdateServiceRequest(updatedRequest model.
 }
 
 // GetAllServiceRequests retrieves all service requests from the file
-func (repo *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRequest, error) {
-	return repo.loadServiceRequests()
+func (r *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRequest, error) {
+	var serviceRequests []model.ServiceRequest
+
+	file, err := os.Open(r.filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	bytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(bytes, &serviceRequests)
+	if err != nil {
+		return nil, err
+	}
+
+	return serviceRequests, nil
 }
 
 // SaveAllServiceRequests saves all service requests to the file

@@ -39,19 +39,22 @@ func SignUp(userRepo *repository.UserRepository) (*model.User, error) {
 		}
 		break
 	}
-	var password string
+	var hiddenPassword string
 
 	for {
 		fmt.Print("Enter Password: ")
-		password, _ = reader.ReadString('\n')
-		password = strings.TrimSpace(password)
-		if err := util.ValidatePassword(password); err != nil {
+		//password, _ := terminal.ReadPassword(int(os.Stdin.Fd()))
+		//hiddenPassword := string(password)
+		//hiddenPassword = strings.TrimSpace(hiddenPassword)
+		hiddenPassword, _ = reader.ReadString('\n')
+		hiddenPassword = strings.TrimSpace(hiddenPassword)
+		if err := util.ValidatePassword(hiddenPassword); err != nil {
 			color.Red("%s", err)
 			continue
 		}
 		break
 	}
-	newPassword, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	newPassword, err := bcrypt.GenerateFromPassword([]byte(hiddenPassword), 10)
 	if err != nil {
 		color.Red("%s", err)
 	}
@@ -60,7 +63,7 @@ func SignUp(userRepo *repository.UserRepository) (*model.User, error) {
 		fmt.Print(`Enter Role 
 Press 1-Householder
 Press 2-ServiceProvider
-Press 3-Admin`)
+`)
 		fmt.Println()
 		var choice int
 		fmt.Scanf("%d", &choice)
@@ -69,13 +72,10 @@ Press 3-Admin`)
 			role = "Householder"
 		case 2:
 			role = "ServiceProvider"
-		case 3:
-			role = "Admin"
-		case 4:
-			fmt.Println("Enter valid choice")
-			continue
+
 		default:
 			color.Red("Invalid choice")
+			continue
 		}
 		break
 	}
@@ -97,25 +97,25 @@ Press 3-Admin`)
 		break
 	}
 
-	fmt.Print("Enter Latitude: ")
-	var lat float64
-	fmt.Scanf("%f", &lat)
-
-	fmt.Print("Enter Longitude: ")
-	var lon float64
-	fmt.Scanf("%f", &lon)
+	//fmt.Print("Enter Latitude: ")
+	//var lat float64
+	//fmt.Scanf("%f", &lat)
+	//
+	////fmt.Print("Enter Longitude: ")
+	//var lon float64
+	//fmt.Scanf("%f", &lon)
 
 	// Generate UUID for the user ID
 	user := model.User{
-		ID:        uuid.New().String(),
-		Name:      name,
-		Email:     email,
-		Password:  string(newPassword),
-		Role:      role,
-		Address:   address,
-		Contact:   contact,
-		Latitude:  lat,
-		Longitude: lon,
+		ID:       uuid.New().String(),
+		Name:     name,
+		Email:    email,
+		Password: string(newPassword),
+		Role:     role,
+		Address:  address,
+		Contact:  contact,
+		//Latitude:  lat,
+		//Longitude: lon,
 	}
 
 	if err := userRepo.SaveUser(user); err != nil {
@@ -134,9 +134,11 @@ func Login(userRepo *repository.UserRepository) (*model.User, error) {
 	email = strings.TrimSpace(email)
 
 	fmt.Print("Enter Password: ")
+	//password, _ := terminal.ReadPassword(int(os.Stdin.Fd()))
+	//hiddenPassword := string(password)
+	//hiddenPassword = strings.TrimSpace(hiddenPassword)
 	password, _ := reader.ReadString('\n')
 	password = strings.TrimSpace(password)
-
 	user, err := userRepo.GetUserByEmail(email)
 	if err != nil {
 		return nil, err

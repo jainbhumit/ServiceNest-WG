@@ -9,6 +9,14 @@ import (
 	"serviceNest/model"
 )
 
+type IUserRepository interface {
+	GetUserByID(userID string) (*model.User, error)
+	GetUserByEmail(email string) (*model.User, error)
+	UpdateUser(updatedUser *model.User) error
+	SaveUser(user model.User) error
+	loadUsers() ([]model.User, error)
+	saveUsers(users []model.User) error
+}
 type UserRepository struct {
 	filePath string
 }

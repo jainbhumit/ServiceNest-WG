@@ -36,7 +36,10 @@ func dashBoard(user *model.User) {
 	} else if user.Role == "ServiceProvider" {
 		serviceProviderDashboard(user)
 	} else {
-
+		admin := model.Admin{
+			user,
+		}
+		adminDashboard(&admin)
 	}
 
 }

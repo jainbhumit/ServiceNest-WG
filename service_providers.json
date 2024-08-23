@@ -18,7 +18,7 @@
         "provider_id": ""
       }
     ],
-    "rating": 4,
+    "rating": 3.5,
     "reviews": [
       {
         "id": "7110",
@@ -27,8 +27,66 @@
         "rating": 4,
         "comments": "good",
         "review_date": "2024-08-22T16:41:57.9342368+05:30"
+      },
+      {
+        "id": "5877",
+        "service_id": "plumber",
+        "householder_id": "ceadc8ea-6c4c-4921-88d7-ee99c7786cca",
+        "rating": 3,
+        "comments": "good",
+        "review_date": "2024-08-22T21:43:38.6902247+05:30"
       }
     ],
-    "availability": true
+    "availability": true,
+    "is_active": false
+  },
+  {
+    "id": "e3a8e8eb-36c0-4be6-a2d5-ac4e98574907",
+    "name": "divy",
+    "email": "divy@gmail.com",
+    "password": "$2a$10$hFeE36JJvty9swHggnroe.Ra2ZaKC/H1e76111qs06DUILVm5WRke",
+    "role": "ServiceProvider",
+    "address": "",
+    "contact": "9876545678",
+    "latitude": 0,
+    "longitude": 0,
+    "services_offered": [],
+    "rating": 0,
+    "reviews": [],
+    "availability": true,
+    "is_active": false
+  },
+  {
+    "id": "b946c3a4-17f9-4217-b3f3-a8eb8cf47ae9",
+    "name": "riya",
+    "email": "riya@gmail.com",
+    "password": "$2a$10$5xenkGh3s/p3/9unGgZ4YuJSYLBdgzIpu2LYRGLyT.Yg2tvRELTTC",
+    "role": "ServiceProvider",
+    "address": "sector 135",
+    "contact": "8934231234",
+    "latitude": 2,
+    "longitude": 3,
+    "services_offered": [
+      {
+        "id": "2045",
+        "name": "maid",
+        "description": "food",
+        "price": 500,
+        "provider_id": ""
+      }
+    ],
+    "rating": 4,
+    "reviews": [
+      {
+        "id": "5797",
+        "service_id": "maid",
+        "householder_id": "ceadc8ea-6c4c-4921-88d7-ee99c7786cca",
+        "rating": 4,
+        "comments": "good",
+        "review_date": "2024-08-23T10:54:59.5176778+05:30"
+      }
+    ],
+    "availability": true,
+    "is_active": true
   }
 ]

@@ -13,8 +13,9 @@ type ServiceRequest struct {
 	ProviderDetails   *ServiceProviderDetails `json:"provider_details,omitempty"`
 }
 type ServiceProviderDetails struct {
-	Name    string `json:"name"`
-	Contact string `json:"contact"`
-	Address string `json:"address"`
-	Rating float64 `json:"rating"`
+	Name    string    `json:"name"`
+	Contact string    `json:"contact"`
+	Address string    `json:"address"`
+	Rating  float64   `json:"rating"`
+	Reviews []*Review `json:"reviews"`
 }

@@ -7,13 +7,3 @@ type ServiceArea struct {
 	Longitude float64 `json:"longitude"`
 	Radius    float64 `json:"radius"` // Service area radius in kilometers
 }
-
-func NewServiceArea(id, name string, lat, lon, radius float64) *ServiceArea {
-	return &ServiceArea{
-		ID:        id,
-		Name:      name,
-		Latitude:  lat,
-		Longitude: lon,
-		Radius:    radius,
-	}
-}

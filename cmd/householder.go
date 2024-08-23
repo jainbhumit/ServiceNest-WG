@@ -260,7 +260,7 @@ func viewStatus(householderService *service.HouseholderService, householder *mod
 	// Fetch all service requests for the householder
 	requests, err := householderService.ViewStatus(householderService, householder)
 	if err != nil {
-
+		color.Red("Error viewing status: %v", err)
 	}
 
 	if len(requests) == 0 {
@@ -276,6 +276,25 @@ func viewStatus(householderService *service.HouseholderService, householder *mod
 			color.Green("Contact: %s", request.ProviderDetails.Contact)
 			color.Green("Address: %s", request.ProviderDetails.Address)
 			color.Green("Rating: %v", request.ProviderDetails.Rating)
+			color.Green("Review for : %v", request.ServiceID)
+
+			if len(request.ProviderDetails.Reviews) == 0 {
+				color.Cyan("Provider has no Rivews.")
+				continue
+			}
+			var reviewPresent bool
+			for _, review := range request.ProviderDetails.Reviews {
+				if review.ServiceID == request.ServiceID {
+					reviewPresent = true
+					color.Green("Rate[1-5]: %v", review.Rating)
+					color.Green("Comment: %v", review.Comments)
+					color.Green("Date: %v", review.ReviewDate)
+				}
+			}
+			if !reviewPresent {
+				color.Cyan("Provider has no Rivews for servive %v.", request.ServiceID)
+
+			}
 		}
 		fmt.Println()
 

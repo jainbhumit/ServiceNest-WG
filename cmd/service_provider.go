@@ -16,13 +16,14 @@ func serviceProviderDashboard(user *model.User) {
 	providerRepo := repository.NewServiceProviderRepository("service_providers.json")
 
 	providerService := service.NewServiceProviderService(providerRepo, requestRepo, serviceRepo)
-	provider := &model.ServiceProvider{
-		User:            *user,
-		ServicesOffered: []model.Service{},
-		Rating:          0.0,
-		Reviews:         []*model.Review{},
-		Availability:    true,
-	}
+	//provider := &model.ServiceProvider{
+	//	User:            *user,
+	//	ServicesOffered: []model.Service{},
+	//	Rating:          0.0,
+	//	Reviews:         []*model.Review{},
+	//	Availability:    true,
+	//	IsActive:        true,
+	//}
 	// Check if ServiceProvider already exists
 	provider, err := providerRepo.GetProviderByID(user.ID)
 	if err != nil {
@@ -33,6 +34,7 @@ func serviceProviderDashboard(user *model.User) {
 			Rating:          0.0,
 			Reviews:         []*model.Review{},
 			Availability:    true,
+			IsActive:        true,
 		}
 
 		// Save the new ServiceProvider to the repository
@@ -41,6 +43,10 @@ func serviceProviderDashboard(user *model.User) {
 			color.Red("Error saving new service provider: %v", err)
 			return
 		}
+	}
+	if !provider.IsActive {
+		color.Red("Service provider is deactivated by admin")
+		return
 	}
 	for {
 		color.Blue("1. View Profile")

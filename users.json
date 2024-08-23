@@ -119,5 +119,49 @@
     "contact": "7654356738",
     "latitude": 6293,
     "longitude": 738493
+  },
+  {
+    "id": "8d4ad2bb-809c-4a7d-a2db-d421117e90b1",
+    "name": "admin",
+    "email": "admin@gmail.com",
+    "password": "$2a$10$8ajv2glGi67W0fAO07WRy.NevwB0ff9c759xwLOSjw9YHViSwbBeC",
+    "role": "Admin",
+    "address": "admin",
+    "contact": "9636162467",
+    "latitude": 241,
+    "longitude": 342
+  },
+  {
+    "id": "e3a8e8eb-36c0-4be6-a2d5-ac4e98574907",
+    "name": "divy",
+    "email": "divy@gmail.com",
+    "password": "$2a$10$hFeE36JJvty9swHggnroe.Ra2ZaKC/H1e76111qs06DUILVm5WRke",
+    "role": "ServiceProvider",
+    "address": "",
+    "contact": "9876545678",
+    "latitude": 0,
+    "longitude": 0
+  },
+  {
+    "id": "e1cc9734-8034-40db-9ecc-adc84d0bbbf2",
+    "name": "pravin",
+    "email": "pravin@gmail.com",
+    "password": "$2a$10$dgZTZKV4HiAySbno/kaose0/4rd0rkNmkklYjAYFyRWLTeCDUGBwe",
+    "role": "ServiceProvider",
+    "address": "",
+    "contact": "6923747923",
+    "latitude": 0,
+    "longitude": 0
+  },
+  {
+    "id": "b946c3a4-17f9-4217-b3f3-a8eb8cf47ae9",
+    "name": "riya",
+    "email": "riya@gmail.com",
+    "password": "$2a$10$5xenkGh3s/p3/9unGgZ4YuJSYLBdgzIpu2LYRGLyT.Yg2tvRELTTC",
+    "role": "ServiceProvider",
+    "address": "sector 135",
+    "contact": "8934231234",
+    "latitude": 2,
+    "longitude": 3
   }
 ]

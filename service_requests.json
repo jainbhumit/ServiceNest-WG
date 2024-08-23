@@ -1,65 +1,43 @@
 [
   {
-    "id": "3932",
-    "householder_id": "b3e27cb7-50c4-4700-a6c7-9d814a2c466a",
-    "service_id": "carwash",
-    "service_provider_id": "",
-    "requested_time": "2024-08-21T22:47:56.5672517+05:30",
-    "scheduled_time": "0001-01-01T00:00:00Z",
-    "status": "Cancelled"
-  },
-  {
-    "id": "6671",
-    "householder_id": "94c71a59-8744-4f96-b37a-d31704fe51e7",
-    "service_id": "carwash",
-    "service_provider_id": "c8da416a-0436-4643-b50a-f5762565880c",
-    "requested_time": "2024-08-22T12:16:27.1974376+05:30",
+    "id": "9616",
+    "householder_id": "ceadc8ea-6c4c-4921-88d7-ee99c7786cca",
+    "service_id": "maid",
+    "service_provider_id": "b946c3a4-17f9-4217-b3f3-a8eb8cf47ae9",
+    "requested_time": "2024-08-23T10:36:45.0675551+05:30",
     "scheduled_time": "0001-01-01T00:00:00Z",
     "status": "Accepted",
     "provider_details": {
-      "name": "tushar",
-      "contact": "5550825084",
-      "address": "noida sector 135",
-      "rating": 0
+      "name": "riya",
+      "contact": "8934231234",
+      "address": "sector 135",
+      "rating": 0,
+      "reviews": []
     }
   },
   {
-    "id": "1880",
+    "id": "2086",
     "householder_id": "ceadc8ea-6c4c-4921-88d7-ee99c7786cca",
     "service_id": "maid",
-    "service_provider_id": "c8da416a-0436-4643-b50a-f5762565880c",
-    "requested_time": "2024-08-22T14:22:55.5566001+05:30",
-    "scheduled_time": "0001-01-01T00:00:00Z",
-    "status": "Cancelled",
-    "provider_details": {
-      "name": "tushar",
-      "contact": "5550825084",
-      "address": "noida sector 135",
-      "rating": 0
-    }
-  },
-  {
-    "id": "3559",
-    "householder_id": "ceadc8ea-6c4c-4921-88d7-ee99c7786cca",
-    "service_id": "plumber",
-    "service_provider_id": "c8da416a-0436-4643-b50a-f5762565880c",
-    "requested_time": "2024-08-22T16:05:13.7963456+05:30",
+    "service_provider_id": "b946c3a4-17f9-4217-b3f3-a8eb8cf47ae9",
+    "requested_time": "2024-08-23T10:55:13.7917527+05:30",
     "scheduled_time": "0001-01-01T00:00:00Z",
     "status": "Accepted",
     "provider_details": {
-      "name": "tushar",
-      "contact": "5550825084",
-      "address": "noida sector 135",
-      "rating": 0
+      "name": "riya",
+      "contact": "8934231234",
+      "address": "sector 135",
+      "rating": 4,
+      "reviews": [
+        {
+          "id": "5797",
+          "service_id": "maid",
+          "householder_id": "ceadc8ea-6c4c-4921-88d7-ee99c7786cca",
+          "rating": 4,
+          "comments": "good",
+          "review_date": "2024-08-23T10:54:59.5176778+05:30"
+        }
+      ]
     }
-  },
-  {
-    "id": "4441",
-    "householder_id": "ceadc8ea-6c4c-4921-88d7-ee99c7786cca",
-    "service_id": "maid",
-    "service_provider_id": "",
-    "requested_time": "2024-08-22T16:34:18.552019+05:30",
-    "scheduled_time": "0001-01-01T00:00:00Z",
-    "status": "Pending"
   }
 ]
