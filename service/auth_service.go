@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 	"os"
 	"serviceNest/model"
 	"serviceNest/repository"
@@ -54,10 +53,10 @@ func SignUp(userRepo *repository.UserRepository) (*model.User, error) {
 		}
 		break
 	}
-	newPassword, err := bcrypt.GenerateFromPassword([]byte(hiddenPassword), 10)
-	if err != nil {
-		color.Red("%s", err)
-	}
+	////newPassword, err := bcrypt.GenerateFromPassword([]byte(hiddenPassword), 10)
+	//if err != nil {
+	//	color.Red("%s", err)
+	//}
 	var role string
 	for {
 		fmt.Print(`Enter Role 
@@ -110,7 +109,7 @@ Press 2-ServiceProvider
 		ID:       uuid.New().String(),
 		Name:     name,
 		Email:    email,
-		Password: string(newPassword),
+		Password: hiddenPassword,
 		Role:     role,
 		Address:  address,
 		Contact:  contact,
@@ -140,14 +139,17 @@ func Login(userRepo *repository.UserRepository) (*model.User, error) {
 	password, _ := reader.ReadString('\n')
 	password = strings.TrimSpace(password)
 	user, err := userRepo.GetUserByEmail(email)
+
 	if err != nil {
 		return nil, err
 	}
-
-	ok := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
-	if ok != nil {
+	if password != user.Password {
 		return nil, fmt.Errorf("invalid credentials")
 	}
+	//ok := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	//if ok != nil {
+	//	return nil, fmt.Errorf("invalid credentials")
+	//}
 
 	fmt.Println("Login successful!")
 	return user, nil

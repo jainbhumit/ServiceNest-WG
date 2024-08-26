@@ -1,7 +1,7 @@
 package model
 
 type Admin struct {
-	User *User `json:"user"`
+	User *User `json:"user" bson:"user"`
 	//ID       string `json:"id"`
 	//Name     string `json:"name"`
 	//Email    string `json:"email"`

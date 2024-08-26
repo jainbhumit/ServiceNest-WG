@@ -11,9 +11,9 @@ import (
 )
 
 func serviceProviderDashboard(user *model.User) {
-	serviceRepo := repository.NewServiceRepository("services.json")
-	requestRepo := repository.NewServiceRequestRepository("service_requests.json")
-	providerRepo := repository.NewServiceProviderRepository("service_providers.json")
+	serviceRepo := repository.NewServiceRepository(nil)
+	requestRepo := repository.NewServiceRequestRepository()
+	providerRepo := repository.NewServiceProviderRepository(nil)
 
 	providerService := service.NewServiceProviderService(providerRepo, requestRepo, serviceRepo)
 	//provider := &model.ServiceProvider{
@@ -25,8 +25,14 @@ func serviceProviderDashboard(user *model.User) {
 	//	IsActive:        true,
 	//}
 	// Check if ServiceProvider already exists
+	if user == nil {
+		color.Red("User is nil. Cannot proceed with dashboard.")
+		return
+	}
+
 	provider, err := providerRepo.GetProviderByID(user.ID)
 	if err != nil {
+
 		// If not found, create a new ServiceProvider
 		provider = &model.ServiceProvider{
 			User:            *user,
@@ -88,21 +94,30 @@ func serviceProviderDashboard(user *model.User) {
 }
 
 func addService(providerService *service.ServiceProviderService, provider *model.ServiceProvider) {
-	var serviceName, description string
+	util.DisplayCategory()
+	var serviceName, description, category string
 	var price float64
 
 	fmt.Print("Enter service name: ")
 	fmt.Scanln(&serviceName)
 	fmt.Print("Enter description: ")
 	fmt.Scanln(&description)
+	fmt.Print("Enter category: ")
+	fmt.Scanln(&category)
 	fmt.Print("Enter price: ")
 	fmt.Scanln(&price)
 
 	service := model.Service{
-		ID:          util.GenerateUniqueID(), // Implement this function for generating unique IDs
-		Name:        serviceName,
-		Description: description,
-		Price:       price,
+		ID:              util.GenerateUniqueID(),
+		Name:            serviceName,
+		Description:     description,
+		Price:           price,
+		Category:        category,
+		ProviderID:      provider.ID,
+		ProviderName:    provider.Name,
+		ProviderContact: provider.Contact,
+		ProviderAddress: provider.Address,
+		ProviderRating:  provider.Rating,
 	}
 
 	err := providerService.AddService(provider.ID, service)
@@ -221,6 +236,7 @@ func viewProviderServices(serviceProviderService *service.ServiceProviderService
 	}
 }
 func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService, provider *model.ServiceProvider) {
+
 	// Fetch all service requests
 	serviceRequests, err := providerService.GetAllServiceRequests()
 	if err != nil {
@@ -257,7 +273,7 @@ func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService
 	// Display the details of the service request
 	color.Cyan("Service Request Details:")
 	color.Cyan("Request ID: %s", serviceRequest.ID)
-	color.Cyan("Householder ID: %s", *serviceRequest.HouseholderID)
+	color.Cyan("Householder ID: %s", serviceRequest.HouseholderID)
 	color.Cyan("Service ID: %s", serviceRequest.ServiceID)
 	color.Cyan("Requested Time: %s", serviceRequest.RequestedTime.Format(time.RFC1123))
 	color.Cyan("Scheduled Time: %s", serviceRequest.ScheduledTime.Format(time.RFC1123))

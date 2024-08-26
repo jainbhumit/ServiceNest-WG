@@ -1,0 +1,38 @@
+[
+  {
+    "Name": "maid",
+    "Description": "Helping with food preparation and household chores."
+  },
+  {
+    "Name": "plumber",
+    "Description": "Specializing in leak repairs, pipe installations, and maintenance of water systems."
+  },
+  {
+    "Name": "electrician",
+    "Description": "Offering services such as light fixture installations, wiring repairs, and electrical safety inspections."
+  },
+  {
+    "Name": "gardener",
+    "Description": "Providing lawn care, planting, pruning, and general garden maintenance services."
+  },
+  {
+    "Name": "carpenter",
+    "Description": "Expertise in woodwork, furniture repair, and construction projects around the home."
+  },
+  {
+    "Name": "painter",
+    "Description": "Interior and exterior painting services, including color consultation and wallpaper removal."
+  },
+  {
+    "Name": "handyman",
+    "Description": "General maintenance and repair work, including minor plumbing, electrical, and carpentry tasks."
+  },
+  {
+    "Name": "locksmith",
+    "Description": "Key cutting, lock replacement, and emergency lockout services."
+  },
+  {
+    "Name": "pestControl",
+    "Description": "Specialized services for the extermination and prevention of pests such as insects, rodents, and wildlife."
+  }
+]

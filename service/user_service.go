@@ -19,10 +19,19 @@ func NewUserService(userRepo *repository.UserRepository) *UserService {
 // View User
 
 func (s *UserService) ViewProfileByID(userID string) (*model.User, error) {
+	//if err := s.userRepo.EnsureConnection(); err != nil {
+	//	return nil, err
+	//}
+
 	user, err := s.userRepo.GetUserByID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("could not find user: %v", err)
 	}
+
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
 	return user, nil
 }
 

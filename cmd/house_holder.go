@@ -6,13 +6,14 @@ import (
 	"serviceNest/model"
 	"serviceNest/repository"
 	"serviceNest/service"
+	"serviceNest/util"
 	"strings"
 	"time"
 )
 
 // ViewProfile allows the user to view their profile details
 func updateProfile(user *model.User) {
-	userRepo := repository.NewUserRepository("users.json")
+	userRepo := repository.NewUserRepository()
 	userService := service.NewUserService(userRepo)
 
 	userID := user.ID
@@ -89,7 +90,7 @@ func updateProfile(user *model.User) {
 
 }
 func viewProfile(user *model.User) {
-	userRepo := repository.NewUserRepository("users.json")
+	userRepo := repository.NewUserRepository()
 	userService := service.NewUserService(userRepo)
 	currUser, err := userService.ViewProfileByID(user.ID)
 	if err != nil {
@@ -116,43 +117,90 @@ func viewProfile(user *model.User) {
 
 // view services provide by provider
 func viewServices(householderService *service.HouseholderService) {
-	color.Blue("Available Service are: ")
-	services, err := householderService.GetAvailableServices()
-	if err != nil {
-		color.Red("%v", err)
-	}
-	for _, service := range services {
-		fmt.Println("Name: ", service.Name)
-		fmt.Println("Description: ", service.Description)
-		fmt.Println("Price: ", service.Price)
-		fmt.Println("-------------------------------------")
-		//color.Green(service.Name)
-		//color.Green(service.Description)
-		//color.Green("%v", service.Price)
+	//color.Blue("Available Service are: ")
+	//services, err := householderService.GetAvailableServices()
+	//if err != nil {
+	//	color.Red("%v", err)
+	//}
+	//for _, service := range services {
+	//	fmt.Println("Name: ", service.Name)
+	//	fmt.Println("Description: ", service.Description)
+	//	fmt.Println("Price: ", service.Price)
+	//	fmt.Println("-------------------------------------")
+	//	//color.Green(service.Name)
+	//	//color.Green(service.Description)
+	//	//color.Green("%v", service.Price)
+	//
+	//}
+	color.Blue("View Services by Category:")
+	var category string
+	fmt.Print("Enter the category: ")
+	fmt.Scanln(&category)
 
+	services, err := householderService.GetServicesByCategory(category)
+	if err != nil {
+		color.Red("Error fetching services: %v", err)
+		return
+	}
+
+	if len(services) == 0 {
+		color.Cyan("No services found in this category.")
+		return
+	}
+
+	color.Cyan("Available Services in %s:", category)
+	for _, service := range services {
+		color.Cyan("Service ID: %s, Name: %s, Description: %s, Price: %.2f, Provider: %s",
+			service.ID, service.Name, service.Description, service.Price, service.ProviderName)
+		color.Cyan("Provider Contact: %s, Provider Address: %s, Provider Rating: %.2f",
+			service.ProviderContact, service.ProviderAddress, service.ProviderRating)
 	}
 }
 
 // SearchService allows the householder to search for available service providers
 func searchService(householderService *service.HouseholderService, householder *model.Householder) {
-	var serviceType string
-	fmt.Print("Enter the type of service you're looking for: ")
-	fmt.Scanln(&serviceType)
+	util.DisplayCategory()
+	//var serviceType string
+	//fmt.Print("Enter the type of service you're looking for: ")
+	//fmt.Scanln(&serviceType)
+	//
+	//providers, err := householderService.SearchService(householder, serviceType)
+	//if err != nil {
+	//	color.Red("Error searching for service: %v", err)
+	//	return
+	//}
+	//
+	//color.Cyan("Found %d providers for %s:", len(providers), serviceType)
+	//for _, provider := range providers {
+	//	color.Cyan("- %s (%s)", provider.Name, provider.Contact)
+	//}
+	var category string
+	fmt.Print("Enter the category of services you're looking for: ")
+	fmt.Scanln(&category)
 
-	providers, err := householderService.SearchService(householder, serviceType)
+	services, err := householderService.GetServicesByCategory(category)
 	if err != nil {
-		color.Red("Error searching for service: %v", err)
+		color.Red("Error fetching services: %v", err)
 		return
 	}
 
-	color.Cyan("Found %d providers for %s:", len(providers), serviceType)
-	for _, provider := range providers {
-		color.Cyan("- %s (%s)", provider.Name, provider.Contact)
+	if len(services) == 0 {
+		color.Cyan("No services found in this category.")
+		return
+	}
+
+	color.Cyan("Available Services:")
+	for _, service := range services {
+		color.Cyan("Service ID: %s, Name: %s, Description: %s, Price: %.2f, Provider: %s",
+			service.ID, service.Name, service.Description, service.Price, service.ProviderName)
+		color.Cyan("Provider Contact: %s, Provider Address: %s, Provider Rating: %.2f",
+			service.ProviderContact, service.ProviderAddress, service.ProviderRating)
 	}
 }
 
 // RequestService allows the householder to request a specific service
 func requestService(householderService *service.HouseholderService, user *model.User) {
+	util.DisplayCategory()
 	var serviceType string
 	fmt.Print("Enter the type of service you want to request: ")
 	fmt.Scanln(&serviceType)
@@ -333,10 +381,10 @@ func cancelAcceptedServiceRequest(householderService *service.HouseholderService
 // HouseholderDashboard is the main dashboard for householder actions
 func householderDashboard(user *model.User) {
 	// Initialize repositories and services
-	householderRepo := repository.NewHouseholderRepository("householders.json")
-	serviceRequestRepo := repository.NewServiceRequestRepository("service_requests.json")
+	householderRepo := repository.NewHouseholderRepository()
+	serviceRequestRepo := repository.NewServiceRequestRepository()
 	serviceProviderRepo := repository.NewServiceProviderRepository("service_providers.json")
-	serviceRepo := repository.NewServiceRepository("services.json")
+	serviceRepo := repository.NewServiceRepository(nil)
 	householderService := service.NewHouseholderService(householderRepo, serviceProviderRepo, serviceRepo, serviceRequestRepo)
 
 	// Convert the User to a Householder

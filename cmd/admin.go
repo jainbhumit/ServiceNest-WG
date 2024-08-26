@@ -11,9 +11,9 @@ import (
 // AdminDashboard is the main dashboard for admin actions
 func adminDashboard(admin *model.Admin) {
 	adminRepo := repository.NewAdminRepository("admins.json")
-	serviceRepo := repository.NewServiceRepository("services.json")
-	userRepo := repository.NewUserRepository("users.json")
-	serviceRequestRepo := repository.NewServiceRequestRepository("service_requests.json")
+	serviceRepo := repository.NewServiceRepository(nil)
+	userRepo := repository.NewUserRepository()
+	serviceRequestRepo := repository.NewServiceRequestRepository()
 	providerRepo := repository.NewServiceProviderRepository("service_providers.json")
 
 	adminService := service.NewAdminService(adminRepo, serviceRepo, serviceRequestRepo, userRepo, providerRepo)

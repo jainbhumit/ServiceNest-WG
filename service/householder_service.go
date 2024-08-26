@@ -81,7 +81,74 @@ func (s *HouseholderService) SearchService(householder *model.Householder, servi
 	}
 
 	return nearbyProviders, nil
+
 }
+
+//	func (s *HouseholderService) GetServicesByCategory(category string) ([]model.Service, error) {
+//		services, err := s.serviceRepo.GetAllServices()
+//		if err != nil {
+//			return nil, err
+//		}
+//
+//		var filteredServices []model.Service
+//		for _, service := range services {
+//			if service.Category == category {
+//				filteredServices = append(filteredServices, *service)
+//			}
+//		}
+//
+//		return filteredServices, nil
+//	}
+func (s *HouseholderService) GetServicesByCategory(category string) ([]*model.Service, error) {
+	// Fetch all services from the service repository
+	services, err := s.serviceRepo.GetAllServices()
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize a slice to hold the filtered services
+	var filteredServices []*model.Service
+
+	// Iterate over each service and filter by category
+	for _, service := range services {
+		if service.Category == category {
+			//// Fetch the service provider details using the ProviderID from the service
+			//provider, err := s.getProviderDetails(service.ProviderID)
+			//if err != nil {
+			//	return nil, err
+			//}
+			//
+			//// Attach the provider details to the service object
+			//service.ProviderName = provider.Name
+			//service.ProviderContact = provider.Contact
+			//service.ProviderAddress = provider.Address
+			//service.ProviderRating = provider.Rating
+
+			// Add the service with the provider details to the filtered services slice
+			filteredServices = append(filteredServices, service)
+		}
+	}
+
+	return filteredServices, nil
+}
+
+// getProviderDetails is a helper method to fetch provider details by ProviderID
+//func (s *HouseholderService) getProviderDetails(providerID string) (*model.ServiceProvider, error) {
+//	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+//	defer cancel()
+//
+//	// Assume serviceProviderRepo is an instance of ServiceProviderRepository
+//	var provider model.ServiceProvider
+//	err := s.providerRepo.Collection.FindOne(ctx, bson.M{"id": providerID}).Decode(&provider)
+//	if err != nil {
+//		if err == mongo.ErrNoDocuments {
+//			return nil, errors.New("service provider not found")
+//		}
+//		return nil, err
+//	}
+//
+//	return &provider, nil
+//}
 
 // RequestService allows the householder to request a service from a provider
 func (s *HouseholderService) RequestService(householderID, serviceID string) (string, error) {
@@ -112,9 +179,9 @@ func (s *HouseholderService) ViewBookingHistory(householderID string) ([]model.S
 }
 
 // ReviewServiceProvider allows the householder to leave a review for a service provider
-func (s *HouseholderService) ReviewServiceProvider(householderID, providerID, review string, rating float64) error {
-	return s.providerRepo.AddReview(providerID, householderID, review, rating)
-}
+//func (s *HouseholderService) ReviewServiceProvider(householderID, providerID, review string, rating float64) error {
+//	return s.providerRepo.AddReview(providerID, householderID, review, rating)
+//}
 
 // Helper function to determine if a provider is nearby
 func (s *HouseholderService) isNearby(householder *model.Householder, provider *model.ServiceProvider) bool {
@@ -124,7 +191,7 @@ func (s *HouseholderService) isNearby(householder *model.Householder, provider *
 }
 
 // GetAvailableServices fetches all available services from the repository
-func (s *HouseholderService) GetAvailableServices() ([]model.Service, error) {
+func (s *HouseholderService) GetAvailableServices() ([]*model.Service, error) {
 	return s.serviceRepo.GetAllServices()
 }
 
@@ -209,6 +276,7 @@ func (s *HouseholderService) AddReview(householderID, serviceID, comments string
 
 	return nil
 }
-func (s *HouseholderService) GetServiceDetails(serviceID string) (*model.Service, error) {
-	return s.serviceRepo.GetServiceByID(serviceID)
-}
+
+//func (s *HouseholderService) GetServiceDetails(serviceID string) (*model.Service, error) {
+//	return s.serviceRepo.GetServiceByID(serviceID)
+//}

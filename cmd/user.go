@@ -9,7 +9,7 @@ import (
 )
 
 func SignUpUser() {
-	userRepo := repository.NewUserRepository("users.json")
+	userRepo := repository.NewUserRepository()
 
 	_, err := service.SignUp(userRepo)
 	if err != nil {
@@ -18,7 +18,7 @@ func SignUpUser() {
 }
 
 func LoginUser() {
-	userRepo := repository.NewUserRepository("users.json")
+	userRepo := repository.NewUserRepository()
 
 	user, err := service.Login(userRepo)
 	if err != nil {
@@ -36,10 +36,10 @@ func dashBoard(user *model.User) {
 	} else if user.Role == "ServiceProvider" {
 		serviceProviderDashboard(user)
 	} else {
-		admin := model.Admin{
+		admin := &model.Admin{
 			user,
 		}
-		adminDashboard(&admin)
+		adminDashboard(admin)
 	}
 
 }
