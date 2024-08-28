@@ -3,16 +3,16 @@ package service
 import (
 	"errors"
 	"fmt"
+	"serviceNest/interfaces"
 	"serviceNest/model"
-	"serviceNest/repository"
 	"serviceNest/util"
 )
 
 type UserService struct {
-	userRepo *repository.UserRepository
+	userRepo interfaces.UserRepository
 }
 
-func NewUserService(userRepo *repository.UserRepository) *UserService {
+func NewUserService(userRepo interfaces.UserRepository) *UserService {
 	return &UserService{userRepo: userRepo}
 }
 
@@ -73,7 +73,7 @@ func (s *UserService) UpdateUser(userID string, newEmail, newPassword, newAddres
 		user.Address = *newAddress
 	}
 
-	// Save the updated user back to the repository
+	// Save the updated user back to the repository_test
 	if err := s.userRepo.UpdateUser(user); err != nil {
 		return fmt.Errorf("could not update user: %v", err)
 	}

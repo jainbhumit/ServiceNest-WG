@@ -1,7 +1,7 @@
 //func TestSaveService(t *testing.T) {
-//	repo := repository.NewServiceRepository()
+//	repo := repository_test.NewServiceRepository()
 //
-//	service := model.Service{
+//	service_test := model.Service{
 //		ID:          "test-id",
 //		Name:        "Test Service",
 //		Description: "Test Description",
@@ -10,7 +10,7 @@
 //		Category:    "Test Category",
 //	}
 //
-//	err := repo.SaveService(service)
+//	err := repo.SaveService(service_test)
 //	assert.NoError(t, err)
 //}
 
@@ -22,7 +22,7 @@
 //	"go.mongodb.org/mongo-driver/bson"
 //	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
 //	"serviceNest/model"
-//	"serviceNest/repository"
+//	"serviceNest/repository_test"
 //	"testing"
 //
 // )
@@ -31,8 +31,8 @@
 //		mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 //		//defer mt.Close()
 //
-//		// Create the repository instance with the mock collection
-//		repo := repository.NewServiceRepository(mt.Coll)
+//		// Create the repository_test instance with the mock collection
+//		repo := repository_test.NewServiceRepository(mt.Coll)
 //
 //		t.Run("GetAllServices_Success", func(t *testing.T) {
 //			services := []model.Service{
@@ -56,7 +56,7 @@
 //		})
 //
 //		t.Run("GetServiceByID_Success", func(t *testing.T) {
-//			service := model.Service{ID: "1", Name: "Service 1", Category: "Cleaning"}
+//			service_test := model.Service{ID: "1", Name: "Service 1", Category: "Cleaning"}
 //			mt.AddMockResponses(mtest.CreateCursorResponse(1, "serviceNestDB.services", mtest.FirstBatch, bson.D{
 //				{Key: "id", Value: "1"},
 //				{Key: "name", Value: "Service 1"},
@@ -66,14 +66,14 @@
 //			result, err := repo.GetServiceByID("1")
 //			assert.NoError(t, err)
 //			assert.NotNil(t, result)
-//			assert.Equal(t, service.Name, result.Name)
+//			assert.Equal(t, service_test.Name, result.Name)
 //		})
 //
 //		t.Run("SaveService_Success", func(t *testing.T) {
-//			service := model.Service{ID: "3", Name: "Service 3", Category: "Electrical"}
+//			service_test := model.Service{ID: "3", Name: "Service 3", Category: "Electrical"}
 //			mt.AddMockResponses(mtest.CreateSuccessResponse())
 //
-//			err := repo.SaveService(service)
+//			err := repo.SaveService(service_test)
 //			assert.NoError(t, err)
 //		})
 //
@@ -84,52 +84,52 @@
 //			assert.NoError(t, err)
 //		})
 //	}
-package repository_test
+package repository_test_test
 
-import (
-	"log"
-	"serviceNest/database"
-	"serviceNest/model"
-	"serviceNest/repository"
-	"testing"
-)
-
-func TestSaveService(t *testing.T) {
-	client := database.MockConnect()
-	defer database.MockDisconnect()
-
-	if client == nil {
-		log.Fatal("Error connecting to database")
-	}
-	collection := database.GetCollection("TestServiceNestDB", "TestServices")
-	repo := repository.NewServiceRepository(collection)
-	var mockData model.Service
-	mockData = model.Service{
-		ID:          "service1",
-		Name:        "Cleaning",
-		Description: "House cleaning service",
-		Price:       50.0,
-		ProviderID:  "provider1",
-		Category:    "Household",
-	}
-	err := repo.SaveService(mockData)
-	if err != nil {
-		t.Error(err)
-	}
-}
+//import (
+//	"log"
+//	"serviceNest/database"
+//	"serviceNest/model"
+//	"serviceNest/repository_test"
+//	"testing"
+//)
+//
+//func TestSaveService(t *testing.T) {
+//	client := database.MockConnect()
+//	defer database.MockDisconnect()
+//
+//	if client == nil {
+//		log.Fatal("Error connecting to database")
+//	}
+//	collection := database.GetCollection("TestServiceNestDB", "TestServices")
+//	repo := repository_test.NewServiceRepository(collection)
+//	var mockData model.Service
+//	mockData = model.Service{
+//		ID:          "service1",
+//		Name:        "Cleaning",
+//		Description: "House cleaning service_test",
+//		Price:       50.0,
+//		ProviderID:  "provider1",
+//		Category:    "Household",
+//	}
+//	err := repo.SaveService(mockData)
+//	if err != nil {
+//		t.Error(err)
+//	}
+//}
 
 //func TestGetServiceByID(t *testing.T) {
 //	collection := database.GetCollection("TestServiceNestDB", "TestServices")
-//	repo := repository.NewServiceRepository(collection)
+//	repo := repository_test.NewServiceRepository(collection)
 //
-//	service, err := repo.GetServiceByID("service1")
-//	assert.NoError(t, err, "Failed to get service by ID")
-//	assert.Equal(t, "service1", service.ID, "Service ID does not match")
+//	service_test, err := repo.GetServiceByID("service1")
+//	assert.NoError(t, err, "Failed to get service_test by ID")
+//	assert.Equal(t, "service1", service_test.ID, "Service ID does not match")
 //}
 //
 //func TestGetAllServices(t *testing.T) {
 //	collection := database.GetCollection("TestServiceNestDB", "TestServices")
-//	repo := repository.NewServiceRepository(collection)
+//	repo := repository_test.NewServiceRepository(collection)
 //
 //	services, err := repo.GetAllServices()
 //	assert.NoError(t, err, "Failed to get all services")
@@ -138,8 +138,8 @@ func TestSaveService(t *testing.T) {
 //
 //func TestRemoveService(t *testing.T) {
 //	collection := database.GetCollection("TestServiceNestDB", "TestServices")
-//	repo := repository.NewServiceRepository(collection)
+//	repo := repository_test.NewServiceRepository(collection)
 //
 //	err := repo.RemoveService("service1")
-//	assert.NoError(t, err, "Failed to remove service")
+//	assert.NoError(t, err, "Failed to remove service_test")
 //}

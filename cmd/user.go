@@ -1,31 +1,31 @@
 package main
 
 import (
-	"fmt"
 	"github.com/fatih/color"
 	"serviceNest/model"
 	"serviceNest/repository"
 	"serviceNest/service"
 )
 
-func SignUpUser() {
-	userRepo := repository.NewUserRepository()
+func SignUpUser() error {
+	userRepo := repository.NewUserRepository(nil)
 
 	_, err := service.SignUp(userRepo)
 	if err != nil {
-		fmt.Println("Error during signup:", err)
+		return err
 	}
+	return nil
 }
 
-func LoginUser() {
-	userRepo := repository.NewUserRepository()
+func LoginUser() error {
+	userRepo := repository.NewUserRepository(nil)
 
 	user, err := service.Login(userRepo)
 	if err != nil {
-		fmt.Println("Error during login:", err)
-		return
+		return err
 	}
 	dashBoard(user)
+	return nil
 }
 
 func dashBoard(user *model.User) {

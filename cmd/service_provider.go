@@ -12,7 +12,7 @@ import (
 
 func serviceProviderDashboard(user *model.User) {
 	serviceRepo := repository.NewServiceRepository(nil)
-	requestRepo := repository.NewServiceRequestRepository()
+	requestRepo := repository.NewServiceRequestRepository(nil)
 	providerRepo := repository.NewServiceProviderRepository(nil)
 
 	providerService := service.NewServiceProviderService(providerRepo, requestRepo, serviceRepo)
@@ -43,7 +43,7 @@ func serviceProviderDashboard(user *model.User) {
 			IsActive:        true,
 		}
 
-		// Save the new ServiceProvider to the repository
+		// Save the new ServiceProvider to the repository_test
 		err = providerRepo.SaveServiceProvider(*provider)
 		if err != nil {
 			color.Red("Error saving new service provider: %v", err)
@@ -122,7 +122,7 @@ func addService(providerService *service.ServiceProviderService, provider *model
 
 	err := providerService.AddService(provider.ID, service)
 	if err != nil {
-		color.Red("Error adding service: %v", err)
+		color.Red("Error adding service_test: %v", err)
 		return
 	}
 
@@ -135,7 +135,7 @@ func updateService(providerService *service.ServiceProviderService, provider *mo
 
 	fmt.Print("Enter service ID to update: ")
 	fmt.Scanln(&serviceID)
-	fmt.Print("Enter new service name: ")
+	fmt.Print("Enter new service_test name: ")
 	fmt.Scanln(&newName)
 	fmt.Print("Enter new description: ")
 	fmt.Scanln(&newDescription)
@@ -151,7 +151,7 @@ func updateService(providerService *service.ServiceProviderService, provider *mo
 
 	err := providerService.UpdateService(provider.ID, serviceID, updatedService)
 	if err != nil {
-		color.Red("Error updating service: %v", err)
+		color.Red("Error updating service_test: %v", err)
 		return
 	}
 
@@ -237,7 +237,7 @@ func viewProviderServices(serviceProviderService *service.ServiceProviderService
 }
 func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService, provider *model.ServiceProvider) {
 
-	// Fetch all service requests
+	// Fetch all service_test requests
 	serviceRequests, err := providerService.GetAllServiceRequests()
 	if err != nil {
 		color.Red("Error fetching service requests: %v", err)
@@ -247,7 +247,7 @@ func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService
 	// Filter and display only pending requests
 	var pendingRequests []model.ServiceRequest
 	for _, request := range serviceRequests {
-		if request.Status == "Pending" {
+		if request.ApproveStatus == false {
 			pendingRequests = append(pendingRequests, request)
 			color.Cyan("Request ID: %s, Service ID: %s", request.ID, request.ServiceID)
 		}
@@ -263,14 +263,14 @@ func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService
 	fmt.Print("Enter the Service Request ID to view and accept: ")
 	fmt.Scanln(&requestID)
 
-	// Fetch the service request by ID
+	// Fetch the service_test request by ID
 	serviceRequest, err := providerService.GetServiceRequestByID(requestID)
 	if err != nil {
 		color.Red("Error fetching service request: %v", err)
 		return
 	}
 
-	// Display the details of the service request
+	// Display the details of the service_test request
 	color.Cyan("Service Request Details:")
 	color.Cyan("Request ID: %s", serviceRequest.ID)
 	color.Cyan("Householder ID: %s", serviceRequest.HouseholderID)
@@ -279,13 +279,13 @@ func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService
 	color.Cyan("Scheduled Time: %s", serviceRequest.ScheduledTime.Format(time.RFC1123))
 	color.Cyan("Status: %s", serviceRequest.Status)
 
-	// Ask if the service provider wants to accept the request
+	// Ask if the service_test provider wants to accept the request
 	var accept string
 	fmt.Print("Do you want to accept this request? (yes/no): ")
 	fmt.Scanln(&accept)
 
 	if accept == "yes" {
-		// Accept the service request
+		// Accept the service_test request
 		err = providerService.AcceptServiceRequest(provider.ID, requestID)
 		if err != nil {
 			color.Red("Error accepting service request: %v", err)

@@ -13,7 +13,7 @@ import (
 
 // ViewProfile allows the user to view their profile details
 func updateProfile(user *model.User) {
-	userRepo := repository.NewUserRepository()
+	userRepo := repository.NewUserRepository(nil)
 	userService := service.NewUserService(userRepo)
 
 	userID := user.ID
@@ -90,7 +90,7 @@ func updateProfile(user *model.User) {
 
 }
 func viewProfile(user *model.User) {
-	userRepo := repository.NewUserRepository()
+	userRepo := repository.NewUserRepository(nil)
 	userService := service.NewUserService(userRepo)
 	currUser, err := userService.ViewProfileByID(user.ID)
 	if err != nil {
@@ -127,11 +127,12 @@ func viewServices(householderService *service.HouseholderService) {
 	//	fmt.Println("Description: ", service.Description)
 	//	fmt.Println("Price: ", service.Price)
 	//	fmt.Println("-------------------------------------")
-	//	//color.Green(service.Name)
-	//	//color.Green(service.Description)
-	//	//color.Green("%v", service.Price)
+	//	//color.Green(service_test.Name)
+	//	//color.Green(service_test.Description)
+	//	//color.Green("%v", service_test.Price)
 	//
 	//}
+	util.DisplayCategory()
 	color.Blue("View Services by Category:")
 	var category string
 	fmt.Print("Enter the category: ")
@@ -157,16 +158,16 @@ func viewServices(householderService *service.HouseholderService) {
 	}
 }
 
-// SearchService allows the householder to search for available service providers
+// SearchService allows the householder to search for available service_test providers
 func searchService(householderService *service.HouseholderService, householder *model.Householder) {
 	util.DisplayCategory()
 	//var serviceType string
-	//fmt.Print("Enter the type of service you're looking for: ")
+	//fmt.Print("Enter the type of service_test you're looking for: ")
 	//fmt.Scanln(&serviceType)
 	//
 	//providers, err := householderService.SearchService(householder, serviceType)
 	//if err != nil {
-	//	color.Red("Error searching for service: %v", err)
+	//	color.Red("Error searching for service_test: %v", err)
 	//	return
 	//}
 	//
@@ -198,14 +199,14 @@ func searchService(householderService *service.HouseholderService, householder *
 	}
 }
 
-// RequestService allows the householder to request a specific service
-func requestService(householderService *service.HouseholderService, user *model.User) {
+// RequestService allows the householder to request a specific service_test
+func requestService(householderService *service.HouseholderService, user *model.Householder) {
 	util.DisplayCategory()
 	var serviceType string
 	fmt.Print("Enter the type of service you want to request: ")
 	fmt.Scanln(&serviceType)
 
-	requestID, err := householderService.RequestService(user.ID, serviceType)
+	requestID, err := householderService.RequestService(user, serviceType)
 	if err != nil {
 		color.Red("Error requesting service: %v", err)
 		return
@@ -233,7 +234,7 @@ func viewBookingHistory(householderService *service.HouseholderService, user *mo
 	}
 }
 
-// LeaveReview allows the householder to leave a review for a service provider
+// LeaveReview allows the householder to leave a review for a service_test provider
 func leaveReview(householderService *service.HouseholderService, user *model.User) {
 	var serviceID, reviewText string
 	var rating float64
@@ -261,7 +262,7 @@ func cancelServiceRequest(householderService *service.HouseholderService) {
 
 	err := householderService.CancelServiceRequest(requestID)
 	if err != nil {
-		color.Red("Error canceling service request: %v", err)
+		color.Red("Error canceling service_test request: %v", err)
 		return
 	}
 
@@ -284,7 +285,7 @@ func rescheduleServiceRequest(householderService *service.HouseholderService) {
 
 	err = householderService.RescheduleServiceRequest(requestID, newTime)
 	if err != nil {
-		color.Red("Error rescheduling service request: %v", err)
+		color.Red("Error rescheduling service_test request: %v", err)
 		return
 	}
 
@@ -298,14 +299,14 @@ func rescheduleServiceRequest(householderService *service.HouseholderService) {
 //
 //		status, err := householderService.ViewServiceRequestStatus(requestID)
 //		if err != nil {
-//			color.Red("Error viewing service request status: %v", err)
+//			color.Red("Error viewing service_test request status: %v", err)
 //			return
 //		}
 //
-//		color.Cyan("Status of service request %s: %s", requestID, status)
+//		color.Cyan("Status of service_test request %s: %s", requestID, status)
 //	}
 func viewStatus(householderService *service.HouseholderService, householder *model.Householder) {
-	// Fetch all service requests for the householder
+	// Fetch all service_test requests for the householder
 	requests, err := householderService.ViewStatus(householderService, householder)
 	if err != nil {
 		color.Red("Error viewing status: %v", err)
@@ -382,8 +383,8 @@ func cancelAcceptedServiceRequest(householderService *service.HouseholderService
 func householderDashboard(user *model.User) {
 	// Initialize repositories and services
 	householderRepo := repository.NewHouseholderRepository()
-	serviceRequestRepo := repository.NewServiceRequestRepository()
-	serviceProviderRepo := repository.NewServiceProviderRepository("service_providers.json")
+	serviceRequestRepo := repository.NewServiceRequestRepository(nil)
+	serviceProviderRepo := repository.NewServiceProviderRepository(nil)
 	serviceRepo := repository.NewServiceRepository(nil)
 	householderService := service.NewHouseholderService(householderRepo, serviceProviderRepo, serviceRepo, serviceRequestRepo)
 
@@ -415,7 +416,7 @@ func householderDashboard(user *model.User) {
 		case 3:
 			searchService(householderService, householder)
 		case 4:
-			requestService(householderService, user)
+			requestService(householderService, householder)
 		case 5:
 			viewBookingHistory(householderService, user)
 		case 6:

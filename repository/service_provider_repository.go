@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"serviceNest/database"
+	"serviceNest/interfaces"
 	"serviceNest/model"
 )
 
@@ -14,7 +15,7 @@ type ServiceProviderRepository struct {
 }
 
 // NewServiceProviderRepository initializes a new ServiceProviderRepository
-func NewServiceProviderRepository(collection *mongo.Collection) *ServiceProviderRepository {
+func NewServiceProviderRepository(collection *mongo.Collection) interfaces.ServiceProviderRepository {
 	if collection == nil {
 		// Default to the real MongoDB collection if none is provided
 		collection = database.GetCollection("serviceNestDB", "service_providers")
@@ -23,7 +24,7 @@ func NewServiceProviderRepository(collection *mongo.Collection) *ServiceProvider
 
 }
 
-//// SaveServiceProvider saves a new service provider to the file
+//// SaveServiceProvider saves a new service_test provider to the file
 //func (repo *ServiceProviderRepository) SaveServiceProvider(provider model.ServiceProvider) error {
 //	providers, err := repo.loadServiceProviders()
 //	if err != nil {
@@ -40,7 +41,7 @@ func (repo *ServiceProviderRepository) SaveServiceProvider(provider model.Servic
 	return err
 }
 
-// GetProviderByID retrieves a service provider by their ID
+// GetProviderByID retrieves a service_test provider by their ID
 //
 //	func (repo *ServiceProviderRepository) GetProviderByID(id string) (*model.ServiceProvider, error) {
 //		providers, err := repo.loadServiceProviders()
@@ -54,7 +55,7 @@ func (repo *ServiceProviderRepository) SaveServiceProvider(provider model.Servic
 //			}
 //		}
 //
-//		return nil, fmt.Errorf("service provider not found")
+//		return nil, fmt.Errorf("service_test provider not found")
 //	}
 func (repo *ServiceProviderRepository) GetProviderByID(providerID string) (*model.ServiceProvider, error) {
 	var provider *model.ServiceProvider
@@ -65,7 +66,7 @@ func (repo *ServiceProviderRepository) GetProviderByID(providerID string) (*mode
 	return provider, nil
 }
 
-//// GetProvidersByServiceType retrieves all service providers that offer a specific service type
+//// GetProvidersByServiceType retrieves all service_test providers that offer a specific service_test type
 //func (repo *ServiceProviderRepository) GetProvidersByServiceType(serviceType string) ([]model.ServiceProvider, error) {
 //	providers, err := repo.loadServiceProviders()
 //	if err != nil {
@@ -74,8 +75,8 @@ func (repo *ServiceProviderRepository) GetProviderByID(providerID string) (*mode
 //
 //	var matchingProviders []model.ServiceProvider
 //	for _, provider := range providers {
-//		for _, service := range provider.ServicesOffered {
-//			if service.Name == serviceType {
+//		for _, service_test := range provider.ServicesOffered {
+//			if service_test.Name == serviceType {
 //				matchingProviders = append(matchingProviders, provider)
 //				break
 //			}
@@ -105,7 +106,7 @@ func (repo *ServiceProviderRepository) GetProvidersByServiceType(serviceType str
 	return providers, nil
 }
 
-// GetProviderByServiceID retrieves all service providers that offer a specific service type
+// GetProviderByServiceID retrieves all service_test providers that offer a specific service_test type
 //
 //	func (repo *ServiceProviderRepository) GetProviderByServiceID(serviceID string) (*model.ServiceProvider, error) {
 //		providers, err := repo.loadServiceProviders()
@@ -115,8 +116,8 @@ func (repo *ServiceProviderRepository) GetProvidersByServiceType(serviceType str
 //
 //		var matchingProviders model.ServiceProvider
 //		for _, provider := range providers {
-//			for _, service := range provider.ServicesOffered {
-//				if service.ID == serviceID {
+//			for _, service_test := range provider.ServicesOffered {
+//				if service_test.ID == serviceID {
 //					matchingProviders = provider
 //					break
 //				}
@@ -135,14 +136,14 @@ func (repo *ServiceProviderRepository) GetProviderByServiceID(serviceID string) 
 	return &provider, nil
 }
 
-// UpdateServiceProvider updates an existing service provider
+// UpdateServiceProvider updates an existing service_test provider
 //func (repo *ServiceProviderRepository) UpdateServiceProvider(updatedProvider *model.ServiceProvider) error {
 //	providers, err := repo.loadServiceProviders()
 //	if err != nil {
 //		return err
 //	}
 //
-//	// Find and update the service provider
+//	// Find and update the service_test provider
 //	for i, provider := range providers {
 //		if provider.User.ID == updatedProvider.User.ID {
 //			providers[i] = *updatedProvider
@@ -150,7 +151,7 @@ func (repo *ServiceProviderRepository) GetProviderByServiceID(serviceID string) 
 //		}
 //	}
 //
-//	// Save the updated list of service providers back to the file
+//	// Save the updated list of service_test providers back to the file
 //	return repo.saveServiceProviders(providers)
 //}
 
@@ -161,7 +162,7 @@ func (repo *ServiceProviderRepository) UpdateServiceProvider(provider *model.Ser
 	return err
 }
 
-// AddReview adds a review and rating for a service provider
+// AddReview adds a review and rating for a service_test provider
 //
 //	func (repo *ServiceProviderRepository) AddReview(providerID, householderID, review string, rating float64) error {
 //		providers, err := repo.loadServiceProviders()
@@ -182,7 +183,7 @@ func (repo *ServiceProviderRepository) UpdateServiceProvider(provider *model.Ser
 //			}
 //		}
 //
-//		return fmt.Errorf("service provider not found")
+//		return fmt.Errorf("service_test provider not found")
 //	}
 func (repo *ServiceProviderRepository) AddReview(providerID, householderID, review string, rating float64) error {
 	filter := bson.M{"user.id": providerID}
@@ -202,7 +203,7 @@ func (repo *ServiceProviderRepository) AddReview(providerID, householderID, revi
 	return nil
 }
 
-// Private helper methods for loading and saving service providers
+// Private helper methods for loading and saving service_test providers
 //func (repo *ServiceProviderRepository) loadServiceProviders() ([]model.ServiceProvider, error) {
 //	var providers []model.ServiceProvider
 //

@@ -10,13 +10,12 @@ import (
 
 // AdminDashboard is the main dashboard for admin actions
 func adminDashboard(admin *model.Admin) {
-	adminRepo := repository.NewAdminRepository("admins.json")
 	serviceRepo := repository.NewServiceRepository(nil)
-	userRepo := repository.NewUserRepository()
-	serviceRequestRepo := repository.NewServiceRequestRepository()
-	providerRepo := repository.NewServiceProviderRepository("service_providers.json")
+	userRepo := repository.NewUserRepository(nil)
+	serviceRequestRepo := repository.NewServiceRequestRepository(nil)
+	providerRepo := repository.NewServiceProviderRepository(nil)
 
-	adminService := service.NewAdminService(adminRepo, serviceRepo, serviceRequestRepo, userRepo, providerRepo)
+	adminService := service.NewAdminService(serviceRepo, serviceRequestRepo, userRepo, providerRepo)
 
 	for {
 		color.Blue("Admin Dashboard")
@@ -80,10 +79,11 @@ func viewAllServices(adminService *service.AdminService) {
 
 	for _, svc := range services {
 		color.Cyan("Service ID: %s, Name: %s, Description: %s, Price: %.2f", svc.ID, svc.Name, svc.Description, svc.Price)
+		fmt.Println()
 	}
 }
 
-// DeleteService allows the admin to delete a service
+// DeleteService allows the admin to delete a service_test
 func deleteService(adminService *service.AdminService) {
 	var serviceID string
 	fmt.Print("Enter Service ID to delete: ")
@@ -91,7 +91,7 @@ func deleteService(adminService *service.AdminService) {
 
 	err := adminService.DeleteService(serviceID)
 	if err != nil {
-		color.Red("Error deleting service: %v", err)
+		color.Red("Error deleting service_test: %v", err)
 	} else {
 		color.Green("Service deleted successfully")
 	}
@@ -107,7 +107,7 @@ func viewReports(adminService *service.AdminService) {
 	}
 
 	for _, report := range reports {
-		color.Cyan("Report ID: %v, Details: %v", report.ID, report.ProviderDetails)
+		color.Cyan("Report ID: %v, Details:  Name- %v  Contact- %v", report.ID, report.ProviderDetails.Name, report.ProviderDetails.Contact)
 	}
 }
 

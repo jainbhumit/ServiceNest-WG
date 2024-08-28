@@ -1,22 +1,20 @@
 package service
 
 import (
+	"serviceNest/interfaces"
 	"serviceNest/model"
-	"serviceNest/repository"
 )
 
 type AdminService struct {
-	adminRepo   *repository.AdminRepository
-	serviceRepo *repository.ServiceRepository
-	userRepo    *repository.UserRepository
-	//serviceAreaRepo *repository.ServiceAreaRepository
-	providerRepo       *repository.ServiceProviderRepository
-	serviceRequestRepo *repository.ServiceRequestRepository
+	serviceRepo interfaces.ServiceRepository
+	userRepo    interfaces.UserRepository
+	//serviceAreaRepo *repository_test.ServiceAreaRepository
+	providerRepo       interfaces.ServiceProviderRepository
+	serviceRequestRepo interfaces.ServiceRequestRepository
 }
 
-func NewAdminService(adminRepo *repository.AdminRepository, serviceRepo *repository.ServiceRepository, serviceRequestRepo *repository.ServiceRequestRepository, userRepo *repository.UserRepository, providerRepo *repository.ServiceProviderRepository) *AdminService {
+func NewAdminService(serviceRepo interfaces.ServiceRepository, serviceRequestRepo interfaces.ServiceRequestRepository, userRepo interfaces.UserRepository, providerRepo interfaces.ServiceProviderRepository) *AdminService {
 	return &AdminService{
-		adminRepo:   adminRepo,
 		serviceRepo: serviceRepo,
 		userRepo:    userRepo,
 		//serviceAreaRepo: serviceAreaRepo,
@@ -49,54 +47,3 @@ func (s *AdminService) DeactivateAccount(userID string) error {
 func (s *AdminService) GetAllService() ([]*model.Service, error) {
 	return s.serviceRepo.GetAllServices()
 }
-
-//// Add service area
-//func (s *AdminService) AddServiceArea(area model.ServiceArea) error {
-//	service, err := s.serviceRepo.GetServiceByID(serviceID)
-//	if err != nil {
-//		return err
-//	}
-//
-//	service.Areas = append(service.Areas, area)
-//	return s.serviceRepo.UpdateService(service)
-//
-//	return nil
-//}
-//
-//// Remove service area
-//func (s *AdminService) RemoveServiceArea(areaID string) error {
-//	service, err := s.serviceRepo.GetServiceByID(serviceID)
-//	if err != nil {
-//		return err
-//	}
-//
-//	// Filter out the area to remove it
-//	var updatedAreas []string
-//	for _, a := range service.Areas {
-//		if a != area {
-//			updatedAreas = append(updatedAreas, a)
-//		}
-//	}
-//
-//	service.Areas = updatedAreas
-//	return s.serviceRepo.UpdateService(service)
-//	return nil
-//}
-//
-//// Update service area
-//func (s *AdminService) UpdateServiceArea(areaID string, newArea model.ServiceArea) error {
-//	service, err := s.serviceRepo.GetServiceByID(serviceID)
-//	if err != nil {
-//		return err
-//	}
-//
-//	for i, a := range service.Areas {
-//		if a == oldArea {
-//			service.Areas[i] = newArea
-//			break
-//		}
-//	}
-//
-//	return s.serviceRepo.UpdateService(service)
-//	return nil
-//}
