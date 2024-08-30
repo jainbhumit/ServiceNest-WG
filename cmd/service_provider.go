@@ -1,3 +1,6 @@
+//go:build !test
+// +build !test
+
 package main
 
 import (
@@ -63,7 +66,9 @@ func serviceProviderDashboard(user *model.User) {
 		color.Blue("6. View and Accept Service Request")
 		color.Blue("7. Decline Service Request")
 		color.Blue("8. Update Availability")
-		color.Blue("9. Exit")
+		color.Blue("9. View Approved Services")
+
+		color.Blue("10. Exit")
 
 		var choice int
 		fmt.Scanln(&choice)
@@ -86,6 +91,8 @@ func serviceProviderDashboard(user *model.User) {
 		case 8:
 			updateAvailability(providerService, provider)
 		case 9:
+			viewApprovedRequestsForProvider(providerService, provider.User.ID)
+		case 10:
 			return
 		default:
 			color.Red("Invalid choice")
@@ -237,7 +244,7 @@ func viewProviderServices(serviceProviderService *service.ServiceProviderService
 }
 func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService, provider *model.ServiceProvider) {
 
-	// Fetch all service_test requests
+	// Fetch all service requests
 	serviceRequests, err := providerService.GetAllServiceRequests()
 	if err != nil {
 		color.Red("Error fetching service requests: %v", err)
@@ -273,13 +280,13 @@ func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService
 	// Display the details of the service_test request
 	color.Cyan("Service Request Details:")
 	color.Cyan("Request ID: %s", serviceRequest.ID)
-	color.Cyan("Householder ID: %s", serviceRequest.HouseholderID)
+	color.Cyan("Householder ID: %v", serviceRequest.HouseholderID)
 	color.Cyan("Service ID: %s", serviceRequest.ServiceID)
 	color.Cyan("Requested Time: %s", serviceRequest.RequestedTime.Format(time.RFC1123))
 	color.Cyan("Scheduled Time: %s", serviceRequest.ScheduledTime.Format(time.RFC1123))
 	color.Cyan("Status: %s", serviceRequest.Status)
 
-	// Ask if the service_test provider wants to accept the request
+	// Ask if the service provider wants to accept the request
 	var accept string
 	fmt.Print("Do you want to accept this request? (yes/no): ")
 	fmt.Scanln(&accept)
@@ -294,5 +301,49 @@ func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService
 		color.Green("Service request accepted successfully!")
 	} else {
 		color.Yellow("Service request not accepted.")
+	}
+}
+func viewApprovedRequestsForProvider(serviceProviderService *service.ServiceProviderService, providerID string) {
+	// Call the service method to get approved requests
+	approvedRequests, err := serviceProviderService.ViewApprovedRequests(providerID)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Display the approved requests
+	if len(approvedRequests) == 0 {
+		fmt.Println("No approved service requests found for this provider.")
+		return
+	}
+
+	fmt.Println("Approved Service Requests:")
+	for _, req := range approvedRequests {
+		fmt.Printf("\nRequest ID: %s\n", req.ID)
+		fmt.Printf("Service ID: %s\n", req.ServiceID)
+		fmt.Printf("Requested Time: %s\n", req.RequestedTime.Format("2006-01-02 15:04:05"))
+		fmt.Printf("Scheduled Time: %s\n", req.ScheduledTime.Format("2006-01-02 15:04:05"))
+		fmt.Printf("Status: %s\n", req.Status)
+		fmt.Printf("Householder Name: %s\n", req.HouseholderName)
+		fmt.Printf("Householder Address: %s\n", *req.HouseholderAddress)
+
+		// Display provider-specific details
+		for _, providerDetail := range req.ProviderDetails {
+			if providerDetail.ServiceProviderID == providerID {
+				fmt.Println("Provider Details:")
+				fmt.Printf("\tName: %s\n", providerDetail.Name)
+				fmt.Printf("\tContact: %s\n", providerDetail.Contact)
+				fmt.Printf("\tAddress: %s\n", providerDetail.Address)
+				fmt.Printf("\tPrice: %s\n", providerDetail.Price)
+				fmt.Printf("\tRating: %.2f\n", providerDetail.Rating)
+				fmt.Println("\tReviews:")
+				for _, review := range providerDetail.Reviews {
+					fmt.Printf("\t\tReview ID: %s\n", review.ID)
+					fmt.Printf("\t\tRating: %.2f\n", review.Rating)
+					fmt.Printf("\t\tComments: %s\n", review.Comments)
+					fmt.Printf("\t\tReview Date: %s\n", review.ReviewDate.Format("2006-01-02"))
+				}
+			}
+		}
 	}
 }

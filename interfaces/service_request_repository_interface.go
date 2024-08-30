@@ -9,4 +9,5 @@ type ServiceRequestRepository interface {
 	GetServiceRequestsByHouseholderID(householderID string) ([]model.ServiceRequest, error)
 	GetServiceRequestByID(requestID string) (*model.ServiceRequest, error)
 	SaveServiceRequest(request model.ServiceRequest) error
+	GetServiceRequestsByProviderID(providerID string) ([]model.ServiceRequest, error)
 }

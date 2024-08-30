@@ -1,10 +1,15 @@
+//go:build !test
+// +build !test
+
 package repository
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"serviceNest/config"
 	"serviceNest/database"
 	"serviceNest/interfaces"
 	"serviceNest/model"
@@ -18,7 +23,7 @@ type ServiceRequestRepository struct {
 // NewServiceRequestRepository initializes a new ServiceRequestRepository with MongoDB
 func NewServiceRequestRepository(collection *mongo.Collection) interfaces.ServiceRequestRepository {
 	if collection == nil {
-		collection = database.GetCollection("serviceNestDB", "serviceRequests")
+		collection = database.GetCollection(config.DB, config.SERVICEREQUESTSCOLLECTION)
 	}
 	return &ServiceRequestRepository{collection: collection}
 }
@@ -116,4 +121,36 @@ func (repo *ServiceRequestRepository) SaveAllServiceRequests(serviceRequests []m
 
 	_, err := repo.collection.BulkWrite(ctx, operations)
 	return err
+}
+func (r *ServiceRequestRepository) GetServiceRequestsByProviderID(providerID string) ([]model.ServiceRequest, error) {
+	// Define the MongoDB query filter
+	filter := bson.M{
+		"providerDetails.serviceProviderID": providerID,
+	}
+
+	// Prepare a slice to hold the results
+	var serviceRequests []model.ServiceRequest
+
+	// Perform the MongoDB find operation
+	cursor, err := r.collection.Find(context.Background(), filter)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve service requests: %v", err)
+	}
+	defer cursor.Close(context.Background())
+
+	// Iterate over the cursor and decode each document into the slice
+	for cursor.Next(context.Background()) {
+		var request model.ServiceRequest
+		if err := cursor.Decode(&request); err != nil {
+			return nil, fmt.Errorf("could not decode service request: %v", err)
+		}
+		serviceRequests = append(serviceRequests, request)
+	}
+
+	// Check for any cursor errors
+	if err := cursor.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating through service requests: %v", err)
+	}
+
+	return serviceRequests, nil
 }

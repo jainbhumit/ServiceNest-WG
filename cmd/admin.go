@@ -1,3 +1,6 @@
+//go:build !test
+// +build !test
+
 package main
 
 import (
@@ -107,7 +110,13 @@ func viewReports(adminService *service.AdminService) {
 	}
 
 	for _, report := range reports {
-		color.Cyan("Report ID: %v, Details:  Name- %v  Contact- %v", report.ID, report.ProviderDetails.Name, report.ProviderDetails.Contact)
+		color.Cyan("Report ID: %v, Details: Service Name- %v ", report.ID, report.ServiceID)
+		color.Cyan("Service Providers :")
+		for _, provider := range report.ProviderDetails {
+			color.Cyan("Name: %v Contact: %v ", provider.Name, provider.Contact)
+			color.Cyan("-----------------")
+		}
+		fmt.Println()
 	}
 }
 

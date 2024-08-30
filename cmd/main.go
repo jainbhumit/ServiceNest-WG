@@ -1,3 +1,6 @@
+//go:build !test
+// +build !test
+
 // package main
 //
 // import (
@@ -71,6 +74,7 @@ func main() {
 	if err := runApp(); err != nil {
 		log.Fatal(err)
 	}
+
 }
 
 func runApp() error {

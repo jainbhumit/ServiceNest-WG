@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"serviceNest/config"
 	"serviceNest/model"
 )
 
 func DisplayCategory() {
 	var category []model.Category
 
-	file, err := ioutil.ReadFile("service_category.json")
+	file, err := ioutil.ReadFile(config.FILENAME)
 	if err != nil {
 		fmt.Println(err)
 	}

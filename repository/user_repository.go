@@ -1,3 +1,6 @@
+//go:build !test
+// +build !test
+
 package repository
 
 import (
@@ -6,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"serviceNest/config"
 	"serviceNest/database"
 	"serviceNest/interfaces"
 	"serviceNest/model"
@@ -18,7 +22,7 @@ type UserRepository struct {
 
 func NewUserRepository(collection *mongo.Collection) interfaces.UserRepository {
 	if collection == nil {
-		collection = database.GetCollection("serviceNestDB", "users")
+		collection = database.GetCollection(config.DB, config.USERCOLLECTION)
 	}
 
 	return &UserRepository{collection: collection}

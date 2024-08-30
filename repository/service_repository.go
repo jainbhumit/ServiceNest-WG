@@ -1,3 +1,6 @@
+//go:build !test
+// +build !test
+
 package repository
 
 import (
@@ -5,6 +8,7 @@ import (
 	"errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"serviceNest/config"
 	"serviceNest/database"
 	"serviceNest/interfaces"
 	"serviceNest/model"
@@ -19,7 +23,7 @@ type ServiceRepository struct {
 func NewServiceRepository(collection *mongo.Collection) interfaces.ServiceRepository {
 	if collection == nil {
 		// Default to the real MongoDB collection if none is provided
-		collection = database.GetCollection("serviceNestDB", "services")
+		collection = database.GetCollection(config.DB, config.SERVICECOLLECTION)
 	}
 	return &ServiceRepository{Collection: collection}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"serviceNest/config"
 	"serviceNest/database"
 	"serviceNest/interfaces"
 	"serviceNest/model"
@@ -18,7 +19,7 @@ type ServiceProviderRepository struct {
 func NewServiceProviderRepository(collection *mongo.Collection) interfaces.ServiceProviderRepository {
 	if collection == nil {
 		// Default to the real MongoDB collection if none is provided
-		collection = database.GetCollection("serviceNestDB", "service_providers")
+		collection = database.GetCollection(config.DB, config.SERVICEPROVIDERCOLLECTION)
 	}
 	return &ServiceProviderRepository{Collection: collection}
 

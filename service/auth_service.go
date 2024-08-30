@@ -10,7 +10,7 @@
 //	"os"
 //	"serviceNest/model"
 //	"serviceNest/repository"
-//	"serviceNest/util"
+//	"serviceNest/util_test"
 //	"strings"
 //
 // )
@@ -30,7 +30,7 @@
 //			email = strings.TrimSpace(email)
 //
 //			// Validate email
-//			if err := util.ValidateEmail(email); err != nil {
+//			if err := util_test.ValidateEmail(email); err != nil {
 //				color.Red("%s", err)
 //				continue
 //			}
@@ -50,7 +50,7 @@
 //			hiddenPassword = strings.TrimSpace(hiddenPassword)
 //			//hiddenPassword, _ = reader.ReadString('\n')
 //			//hiddenPassword = strings.TrimSpace(hiddenPassword)
-//			if err := util.ValidatePassword(hiddenPassword); err != nil {
+//			if err := util_test.ValidatePassword(hiddenPassword); err != nil {
 //				color.Red("%s", err)
 //				continue
 //			}
@@ -93,7 +93,7 @@
 //			contact, _ = reader.ReadString('\n')
 //			contact = strings.TrimSpace(contact)
 //			// Validate phone number
-//			if err := util.ValidatePhoneNumber(contact); err != nil {
+//			if err := util_test.ValidatePhoneNumber(contact); err != nil {
 //				color.Red("%s", err)
 //				continue
 //			}
@@ -167,6 +167,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/ssh/terminal"
+	"io"
 	"os"
 	"serviceNest/interfaces"
 	"serviceNest/model"
@@ -174,6 +175,11 @@ import (
 	"strings"
 )
 
+var inputReader *bufio.Reader = bufio.NewReader(os.Stdin)
+
+func SetInputReader(r io.Reader) {
+	inputReader = bufio.NewReader(r)
+}
 func SignUp(userRepo interfaces.UserRepository) (*model.User, error) {
 	_ = bufio.NewReader(os.Stdin)
 
@@ -191,10 +197,25 @@ func SignUp(userRepo interfaces.UserRepository) (*model.User, error) {
 	if err != nil {
 		return nil, err
 	}
+	var role string
+	for {
+		fmt.Print(`Enter Role 
+Press 1-Householder
+Press 2-ServiceProvider
+`)
+		var choice string
+		fmt.Scanln(&choice)
+		switch choice {
+		case "1":
+			role = "Householder"
+		case "2":
+			role = "ServiceProvider"
+		default:
+			color.Red("Invalid choice")
+			continue
+		}
+		break
 
-	role, err := getRole()
-	if err != nil {
-		return nil, err
 	}
 
 	address, err := getInput("Enter Address: ")
@@ -296,6 +317,7 @@ Press 2-ServiceProvider
 			color.Red("Invalid choice")
 			continue
 		}
+
 	}
 }
 

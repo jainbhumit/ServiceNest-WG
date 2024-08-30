@@ -151,16 +151,18 @@ func (s *HouseholderService) GetServicesByCategory(category string) ([]*model.Se
 //}
 
 // RequestService allows the householder to request a service_test from a provider
-func (s *HouseholderService) RequestService(householder *model.Householder, serviceID string) (string, error) {
+func (s *HouseholderService) RequestService(householder *model.Householder, serviceID string, scheduleTime *time.Time) (string, error) {
 	// Generate a unique ID for the service_test request
 	requestID := util.GenerateUniqueID() // Function to generate a unique ID
 	// Create the service_test request
 	serviceRequest := model.ServiceRequest{
 		ID:                 requestID,
 		HouseholderName:    householder.Name,
+		HouseholderID:      &householder.User.ID,
 		HouseholderAddress: &householder.Address,
 		ServiceID:          serviceID,
 		RequestedTime:      time.Now(),
+		ScheduledTime:      *scheduleTime,
 		Status:             "Pending", // Initial status
 		ApproveStatus:      false,
 	}
@@ -278,6 +280,59 @@ func (s *HouseholderService) AddReview(householderID, serviceID, comments string
 	return nil
 }
 
-//func (s *HouseholderService) GetServiceDetails(serviceID string) (*model.Service, error) {
-//	return s.serviceRepo.GetServiceByID(serviceID)
-//}
+// ApproveServiceRequest allows the householder to approve a service request.
+func (s *HouseholderService) ApproveServiceRequest(requestID string, providerID string) error {
+	// Retrieve the service request by ID
+	serviceRequest, err := s.serviceRequestRepo.GetServiceRequestByID(requestID)
+	if err != nil {
+		return fmt.Errorf("could not find service request: %v", err)
+	}
+
+	// Check if the request has already been approved
+	if serviceRequest.ApproveStatus {
+		return errors.New("service request has already been approved")
+	}
+
+	// Ensure the provider ID matches the accepted service provider
+	for _, provider := range serviceRequest.ProviderDetails {
+		if provider.ServiceProviderID == providerID {
+			provider.Approve = true
+		}
+	}
+
+	// Set the approval status to true
+	serviceRequest.ApproveStatus = true
+	for _, provider := range serviceRequest.ProviderDetails {
+		if provider.ServiceProviderID == providerID {
+			provider.Approve = true
+			break
+		}
+	}
+	// Update the service request in the repository
+	if err := s.serviceRequestRepo.UpdateServiceRequest(*serviceRequest); err != nil {
+		return fmt.Errorf("could not update service request: %v", err)
+	}
+
+	return nil
+}
+func (s *HouseholderService) ViewApprovedRequests(householderID string) ([]model.ServiceRequest, error) {
+	// Retrieve all service requests for the householder
+	serviceRequests, err := s.serviceRequestRepo.GetServiceRequestsByHouseholderID(householderID)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve service requests: %v", err)
+	}
+
+	// Filter to only include approved requests
+	var approvedRequests []model.ServiceRequest
+	for _, req := range serviceRequests {
+		if req.ApproveStatus {
+			approvedRequests = append(approvedRequests, req)
+		}
+	}
+
+	if len(approvedRequests) == 0 {
+		return nil, errors.New("no approved service requests found")
+	}
+
+	return approvedRequests, nil
+}

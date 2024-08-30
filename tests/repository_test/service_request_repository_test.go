@@ -1,6 +1,5 @@
-package repository_test_test
+package repository_test
 
-//
 //import (
 //	"serviceNest/model"
 //	"serviceNest/repository_test"

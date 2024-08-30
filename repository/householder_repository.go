@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"serviceNest/config"
 	"serviceNest/database"
 	"serviceNest/interfaces"
 	"serviceNest/model"
@@ -12,13 +13,13 @@ import (
 )
 
 type HouseholderRepository struct {
-	collection *mongo.Collection
+	Collection interfaces.MongoCollection
 }
 
 // NewHouseholderRepository initializes a new HouseholderRepository
 func NewHouseholderRepository() interfaces.HouseholderRepository {
-	collection := database.GetCollection("serviceNestDB", "users")
-	return &HouseholderRepository{collection: collection}
+	collection := &MongoCollectionImpl{collection: database.GetCollection(config.DB, config.USERCOLLECTION)}
+	return &HouseholderRepository{Collection: collection}
 }
 
 // SaveHouseholder saves a new householder to the database
@@ -26,7 +27,7 @@ func (repo *HouseholderRepository) SaveHouseholder(householder model.Householder
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := repo.collection.InsertOne(ctx, householder)
+	_, err := repo.Collection.InsertOne(ctx, householder)
 	return err
 }
 
@@ -36,7 +37,7 @@ func (repo *HouseholderRepository) GetHouseholderByID(id string) (*model.Househo
 	defer cancel()
 
 	var householder model.Householder
-	err := repo.collection.FindOne(ctx, bson.M{"id": id}).Decode(&householder)
+	err := repo.Collection.FindOne(ctx, bson.M{"id": id}).Decode(&householder)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, fmt.Errorf("householder not found")

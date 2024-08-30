@@ -1,7 +1,9 @@
 package service
 
 import (
+	"errors"
 	"fmt"
+	"github.com/fatih/color"
 	"serviceNest/interfaces"
 	"serviceNest/model"
 	"serviceNest/util"
@@ -177,16 +179,20 @@ func (s *ServiceProviderService) AcceptServiceRequest(providerID, requestID stri
 	if err != nil {
 		return err
 	}
-
+	var estimatedPrice string
+	color.Cyan("Enter the Price for service")
+	fmt.Scanln(&estimatedPrice)
 	// Add ServiceProvider details to the ServiceRequest
-	serviceRequest.ServiceProviderID = provider.ID
-	serviceRequest.ProviderDetails = &model.ServiceProviderDetails{
-		Name:    provider.Name,
-		Contact: provider.Contact,
-		Address: provider.Address,
-		Rating:  provider.Rating,
-		Reviews: provider.Reviews,
-	}
+
+	serviceRequest.ProviderDetails = append(serviceRequest.ProviderDetails, &model.ServiceProviderDetails{
+		ServiceProviderID: providerID,
+		Name:              provider.Name,
+		Contact:           provider.Contact,
+		Address:           provider.Address,
+		Price:             estimatedPrice,
+		Rating:            provider.Rating,
+		Reviews:           provider.Reviews,
+	})
 
 	// Save the updated service_test request
 	err = s.serviceRequestRepo.UpdateServiceRequest(*serviceRequest)
@@ -253,4 +259,30 @@ func (s *ServiceProviderService) ViewReviews(providerID string) ([]*model.Review
 
 	// Return all reviews for this provider
 	return provider.Reviews, nil
+}
+func (s *ServiceProviderService) ViewApprovedRequests(providerID string) ([]model.ServiceRequest, error) {
+	// Fetch all service requests related to the provider
+	serviceRequests, err := s.serviceRequestRepo.GetServiceRequestsByProviderID(providerID)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve service requests: %v", err)
+	}
+
+	// Filter out only the approved requests
+	var approvedRequests []model.ServiceRequest
+	for _, req := range serviceRequests {
+		if req.ApproveStatus {
+			for _, providerDetail := range req.ProviderDetails {
+				if providerDetail.ServiceProviderID == providerID && providerDetail.Approve {
+					approvedRequests = append(approvedRequests, req)
+					break
+				}
+			}
+		}
+	}
+
+	if len(approvedRequests) == 0 {
+		return nil, errors.New("no approved requests found for this provider")
+	}
+
+	return approvedRequests, nil
 }

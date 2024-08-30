@@ -1,8 +1,13 @@
+//go:build !test
+// +build !test
+
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/fatih/color"
+	"os"
 	"serviceNest/model"
 	"serviceNest/repository"
 	"serviceNest/service"
@@ -206,7 +211,16 @@ func requestService(householderService *service.HouseholderService, user *model.
 	fmt.Print("Enter the type of service you want to request: ")
 	fmt.Scanln(&serviceType)
 
-	requestID, err := householderService.RequestService(user, serviceType)
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter the new scheduled time (YYYY-MM-DD HH:MM): ")
+	newTimeStr, _ := reader.ReadString('\n')
+	newTimeStr = strings.TrimSpace(newTimeStr)
+	newTime, err := time.Parse("2006-01-02 15:04", newTimeStr)
+	if err != nil {
+		color.Red("Error parsing new time: %v", err)
+		return
+	}
+	requestID, err := householderService.RequestService(user, serviceType, &newTime)
 	if err != nil {
 		color.Red("Error requesting service: %v", err)
 		return
@@ -274,9 +288,10 @@ func rescheduleServiceRequest(householderService *service.HouseholderService) {
 	fmt.Print("Enter the Service Request ID you want to reschedule: ")
 	fmt.Scanln(&requestID)
 
-	var newTimeStr string
+	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter the new scheduled time (YYYY-MM-DD HH:MM): ")
-	fmt.Scanln(&newTimeStr)
+	newTimeStr, _ := reader.ReadString('\n')
+	newTimeStr = strings.TrimSpace(newTimeStr)
 	newTime, err := time.Parse("2006-01-02 15:04", newTimeStr)
 	if err != nil {
 		color.Red("Error parsing new time: %v", err)
@@ -306,7 +321,7 @@ func rescheduleServiceRequest(householderService *service.HouseholderService) {
 //		color.Cyan("Status of service_test request %s: %s", requestID, status)
 //	}
 func viewStatus(householderService *service.HouseholderService, householder *model.Householder) {
-	// Fetch all service_test requests for the householder
+	// Fetch all service requests for the householder
 	requests, err := householderService.ViewStatus(householderService, householder)
 	if err != nil {
 		color.Red("Error viewing status: %v", err)
@@ -319,45 +334,52 @@ func viewStatus(householderService *service.HouseholderService, householder *mod
 
 	for _, request := range requests {
 		color.Cyan("Request ID: %s, Service ID: %s, Status: %s", request.ID, request.ServiceID, request.Status)
-		if request.Status == "Accepted" && request.ProviderDetails != nil {
-			color.Green("ServiceProvider Details:")
-			color.Green("Name: %s", request.ProviderDetails.Name)
-			color.Green("Contact: %s", request.ProviderDetails.Contact)
-			color.Green("Address: %s", request.ProviderDetails.Address)
-			color.Green("Rating: %v", request.ProviderDetails.Rating)
-			color.Green("Review for : %v", request.ServiceID)
-
-			if len(request.ProviderDetails.Reviews) == 0 {
-				color.Cyan("Provider has no Rivews.")
-				continue
-			}
-			var reviewPresent bool
-			for _, review := range request.ProviderDetails.Reviews {
-				if review.ServiceID == request.ServiceID {
-					reviewPresent = true
-					color.Green("Rate[1-5]: %v", review.Rating)
-					color.Green("Comment: %v", review.Comments)
-					color.Green("Date: %v", review.ReviewDate)
+		if request.Status == "Accepted" && request.ProviderDetails != nil && !request.ApproveStatus {
+			for _, provider := range request.ProviderDetails {
+				color.Green("ServiceProvider Details:")
+				color.Green("ID: %v", provider.ServiceProviderID)
+				color.Green("Name: %s", provider.Name)
+				color.Green("Contact: %s", provider.Contact)
+				color.Green("Address: %s", provider.Address)
+				color.Green("Price: %s", provider.Price)
+				color.Green("Rating: %v", provider.Rating)
+				fmt.Println("Reviews for ", provider.Name)
+				if len(provider.Reviews) == 0 {
+					color.Cyan("Provider has no Rivews.")
+					continue
 				}
-			}
-			if !reviewPresent {
-				color.Cyan("Provider has no Rivews for servive %v.", request.ServiceID)
+				var reviewPresent bool
+				for _, review := range provider.Reviews {
+					if review.ServiceID == request.ServiceID {
+						reviewPresent = true
+						color.Green("Rate[1-5]: %v", review.Rating)
+						color.Green("Comment: %v", review.Comments)
+						color.Green("Date: %v", review.ReviewDate)
+					}
+				}
+				if !reviewPresent {
+					color.Cyan("Provider has no Reviews for service %v.", request.ServiceID)
 
+				}
+				fmt.Println("-------------------------------------")
 			}
 		}
+
 		fmt.Println()
 
 	}
 	for {
 		var choice string
 		fmt.Println("1.Cancel any Accepted request")
-		fmt.Println("2.Going back")
-
+		fmt.Println("2.Approve Requests")
+		fmt.Println("3.Previous Menu")
 		fmt.Scanln(&choice)
 		switch choice {
 		case "1":
 			cancelAcceptedServiceRequest(householderService, householder.ID)
 		case "2":
+			ApproveRequest(householderService)
+		case "3":
 			return
 		default:
 			color.Red("Invalid choice")
@@ -377,6 +399,70 @@ func cancelAcceptedServiceRequest(householderService *service.HouseholderService
 	}
 
 	color.Green("Service request %s has been successfully canceled.", requestID)
+}
+
+func ApproveRequest(householderService *service.HouseholderService) {
+	reader := bufio.NewReader(os.Stdin)
+
+	// Prompt householder for the service request ID
+	fmt.Print("Enter Service Request ID to approve: ")
+	requestID, _ := reader.ReadString('\n')
+	requestID = strings.TrimSpace(requestID)
+
+	// Prompt householder for the provider ID
+	fmt.Print("Enter Service Provider ID you wish to approve: ")
+	providerID, _ := reader.ReadString('\n')
+	providerID = strings.TrimSpace(providerID)
+
+	// Call the approval function
+	if err := householderService.ApproveServiceRequest(requestID, providerID); err != nil {
+		color.Red("Error approving service request: %v", err)
+		return
+	}
+
+	color.Green("Service request approved successfully!")
+}
+func viewApprovedRequests(householderService *service.HouseholderService, householderID string) {
+	// Call the service method to get approved requests
+	approvedRequests, err := householderService.ViewApprovedRequests(householderID)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Display the approved requests
+	if len(approvedRequests) == 0 {
+		fmt.Println("No approved service requests found.")
+		return
+	}
+
+	fmt.Println("Approved Service Requests:")
+	for _, req := range approvedRequests {
+		fmt.Printf("\nRequest ID: %s\n", req.ID)
+		fmt.Printf("Service ID: %s\n", req.ServiceID)
+		fmt.Printf("Requested Time: %s\n", req.RequestedTime.Format("2006-01-02 15:04:05"))
+		fmt.Printf("Scheduled Time: %s\n", req.ScheduledTime.Format("2006-01-02 15:04:05"))
+		fmt.Printf("Status: %s\n", req.Status)
+		fmt.Println("Provider Details:")
+
+		for _, provider := range req.ProviderDetails {
+			if provider.Approve {
+				fmt.Printf("\tProvider ID: %s\n", provider.ServiceProviderID)
+				fmt.Printf("\tName: %s\n", provider.Name)
+				fmt.Printf("\tContact: %s\n", provider.Contact)
+				fmt.Printf("\tAddress: %s\n", provider.Address)
+				fmt.Printf("\tPrice: %s\n", provider.Price)
+				fmt.Printf("\tRating: %.2f\n", provider.Rating)
+				fmt.Println("\tReviews:")
+				for _, review := range provider.Reviews {
+					fmt.Printf("\t\tReview ID: %s\n", review.ID)
+					fmt.Printf("\t\tRating: %.2f\n", review.Rating)
+					fmt.Printf("\t\tComments: %s\n", review.Comments)
+					fmt.Printf("\t\tReview Date: %s\n", review.ReviewDate.Format("2006-01-02"))
+				}
+			}
+		}
+	}
 }
 
 // HouseholderDashboard is the main dashboard for householder actions
@@ -403,7 +489,8 @@ func householderDashboard(user *model.User) {
 		color.Blue("7. Cancel Service Request")
 		color.Blue("8. Reschedule Service Request")
 		color.Blue("9. View Service Request Status")
-		color.Blue("10.Exit")
+		color.Blue("10. View Approved Request")
+		color.Blue("11.Exit")
 
 		var choice int
 		fmt.Scanln(&choice)
@@ -428,6 +515,8 @@ func householderDashboard(user *model.User) {
 		case 9:
 			viewStatus(householderService, householder)
 		case 10:
+			viewApprovedRequests(householderService, user.ID)
+		case 11:
 			return
 		default:
 			color.Red("Invalid choice")
