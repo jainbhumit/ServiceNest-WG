@@ -35,17 +35,17 @@ func (m *MockServiceProviderRepository) EXPECT() *MockServiceProviderRepositoryM
 }
 
 // AddReview mocks base method.
-func (m *MockServiceProviderRepository) AddReview(providerID, householderID, review string, rating float64) error {
+func (m *MockServiceProviderRepository) AddReview(review model.Review) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddReview", providerID, householderID, review, rating)
+	ret := m.ctrl.Call(m, "AddReview", review)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // AddReview indicates an expected call of AddReview.
-func (mr *MockServiceProviderRepositoryMockRecorder) AddReview(providerID, householderID, review, rating interface{}) *gomock.Call {
+func (mr *MockServiceProviderRepositoryMockRecorder) AddReview(review interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddReview", reflect.TypeOf((*MockServiceProviderRepository)(nil).AddReview), providerID, householderID, review, rating)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddReview", reflect.TypeOf((*MockServiceProviderRepository)(nil).AddReview), review)
 }
 
 // GetProviderByID mocks base method.
@@ -78,6 +78,21 @@ func (mr *MockServiceProviderRepositoryMockRecorder) GetProviderByServiceID(serv
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProviderByServiceID", reflect.TypeOf((*MockServiceProviderRepository)(nil).GetProviderByServiceID), serviceID)
 }
 
+// GetProviderDetailByID mocks base method.
+func (m *MockServiceProviderRepository) GetProviderDetailByID(providerID string) (*model.ServiceProviderDetails, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetProviderDetailByID", providerID)
+	ret0, _ := ret[0].(*model.ServiceProviderDetails)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetProviderDetailByID indicates an expected call of GetProviderDetailByID.
+func (mr *MockServiceProviderRepositoryMockRecorder) GetProviderDetailByID(providerID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProviderDetailByID", reflect.TypeOf((*MockServiceProviderRepository)(nil).GetProviderDetailByID), providerID)
+}
+
 // GetProvidersByServiceType mocks base method.
 func (m *MockServiceProviderRepository) GetProvidersByServiceType(serviceType string) ([]model.ServiceProvider, error) {
 	m.ctrl.T.Helper()
@@ -91,6 +106,36 @@ func (m *MockServiceProviderRepository) GetProvidersByServiceType(serviceType st
 func (mr *MockServiceProviderRepositoryMockRecorder) GetProvidersByServiceType(serviceType interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProvidersByServiceType", reflect.TypeOf((*MockServiceProviderRepository)(nil).GetProvidersByServiceType), serviceType)
+}
+
+// GetReviewsByProviderID mocks base method.
+func (m *MockServiceProviderRepository) GetReviewsByProviderID(providerID string) ([]model.Review, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReviewsByProviderID", providerID)
+	ret0, _ := ret[0].([]model.Review)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetReviewsByProviderID indicates an expected call of GetReviewsByProviderID.
+func (mr *MockServiceProviderRepositoryMockRecorder) GetReviewsByProviderID(providerID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReviewsByProviderID", reflect.TypeOf((*MockServiceProviderRepository)(nil).GetReviewsByProviderID), providerID)
+}
+
+// IsProviderApproved mocks base method.
+func (m *MockServiceProviderRepository) IsProviderApproved(providerID string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsProviderApproved", providerID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsProviderApproved indicates an expected call of IsProviderApproved.
+func (mr *MockServiceProviderRepositoryMockRecorder) IsProviderApproved(providerID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsProviderApproved", reflect.TypeOf((*MockServiceProviderRepository)(nil).IsProviderApproved), providerID)
 }
 
 // SaveServiceProvider mocks base method.
@@ -107,6 +152,34 @@ func (mr *MockServiceProviderRepositoryMockRecorder) SaveServiceProvider(provide
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveServiceProvider", reflect.TypeOf((*MockServiceProviderRepository)(nil).SaveServiceProvider), provider)
 }
 
+// SaveServiceProviderDetail mocks base method.
+func (m *MockServiceProviderRepository) SaveServiceProviderDetail(provider *model.ServiceProviderDetails, requestID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveServiceProviderDetail", provider, requestID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveServiceProviderDetail indicates an expected call of SaveServiceProviderDetail.
+func (mr *MockServiceProviderRepositoryMockRecorder) SaveServiceProviderDetail(provider, requestID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveServiceProviderDetail", reflect.TypeOf((*MockServiceProviderRepository)(nil).SaveServiceProviderDetail), provider, requestID)
+}
+
+// UpdateProviderRating mocks base method.
+func (m *MockServiceProviderRepository) UpdateProviderRating(providerID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateProviderRating", providerID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateProviderRating indicates an expected call of UpdateProviderRating.
+func (mr *MockServiceProviderRepositoryMockRecorder) UpdateProviderRating(providerID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateProviderRating", reflect.TypeOf((*MockServiceProviderRepository)(nil).UpdateProviderRating), providerID)
+}
+
 // UpdateServiceProvider mocks base method.
 func (m *MockServiceProviderRepository) UpdateServiceProvider(provider *model.ServiceProvider) error {
 	m.ctrl.T.Helper()
@@ -119,4 +192,18 @@ func (m *MockServiceProviderRepository) UpdateServiceProvider(provider *model.Se
 func (mr *MockServiceProviderRepositoryMockRecorder) UpdateServiceProvider(provider interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateServiceProvider", reflect.TypeOf((*MockServiceProviderRepository)(nil).UpdateServiceProvider), provider)
+}
+
+// UpdateServiceProviderDetailByRequestID mocks base method.
+func (m *MockServiceProviderRepository) UpdateServiceProviderDetailByRequestID(provider *model.ServiceProviderDetails, requestID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateServiceProviderDetailByRequestID", provider, requestID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateServiceProviderDetailByRequestID indicates an expected call of UpdateServiceProviderDetailByRequestID.
+func (mr *MockServiceProviderRepositoryMockRecorder) UpdateServiceProviderDetailByRequestID(provider, requestID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateServiceProviderDetailByRequestID", reflect.TypeOf((*MockServiceProviderRepository)(nil).UpdateServiceProviderDetailByRequestID), provider, requestID)
 }

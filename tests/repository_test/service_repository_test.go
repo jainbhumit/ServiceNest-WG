@@ -1,138 +1,467 @@
 package repository_test
 
 import (
-	"github.com/golang/mock/gomock"
+	"database/sql"
+	"errors"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/stretchr/testify/require"
+	"regexp"
 	"serviceNest/model"
 	"serviceNest/repository"
-	"serviceNest/tests/mocks"
 	"testing"
 )
 
-func TestServiceRepository_GetAllServices(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+func TestGetAllServices(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
 
-	mockCollection := mocks.NewMockMongoCollection(ctrl)
-	repo := repository.NewServiceRepository(mockCollection)
+	repo := repository.NewServiceRepository(db)
 
-	// Define expected data
-	expectedServices := []*model.Service{
-		{ID: "service1", Name: "Service 1"},
-		{ID: "service2", Name: "Service 2"},
+	rows := sqlmock.NewRows([]string{"id", "name", "description", "price", "provider_id", "category"}).
+		AddRow("1", "Service A", "Description A", 100.0, "provider123", "Category A").
+		AddRow("2", "Service B", "Description B", 200.0, nil, "Category B")
+
+	mock.ExpectQuery("SELECT id, name, description, price, provider_id, category FROM services").
+		WillReturnRows(rows)
+
+	services, err := repo.GetAllServices()
+
+	assert.NoError(t, err)
+	assert.Len(t, services, 2)
+	assert.Equal(t, "Service A", services[0].Name)
+	assert.Equal(t, "", services[1].ProviderID)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+func TestGetServiceByID(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewServiceRepository(db)
+
+	serviceID := "service123"
+	row := sqlmock.NewRows([]string{"id", "name", "description", "price", "provider_id", "category"}).
+		AddRow(serviceID, "Service A", "Description A", 100.0, "provider123", "Category A")
+
+	mock.ExpectQuery("SELECT id, name, description, price, provider_id, category FROM services WHERE id = ?").
+		WithArgs(serviceID).
+		WillReturnRows(row)
+
+	service, err := repo.GetServiceByID(serviceID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "Service A", service.Name)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSaveService(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewServiceRepository(db)
+
+	service := model.Service{
+		ID:          "service123",
+		Name:        "Service A",
+		Description: "Description A",
+		Price:       100.0,
+		ProviderID:  "provider123",
+		Category:    "Category A",
 	}
 
-	// Simulate MongoDB cursor behavior
-	mockCursor := mocks.NewMockCursor(ctrl)
-	mockCollection.EXPECT().
-		Find(gomock.Any(), bson.M{}).
-		Return(mockCursor, nil)
+	mock.ExpectExec("INSERT INTO services").
+		WithArgs(service.ID, service.Name, service.Description, service.Price, service.ProviderID, service.Category).
+		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	mockCursor.EXPECT().All(gomock.Any(), gomock.Any()).SetArg(1, expectedServices).Return(nil)
-	mockCursor.EXPECT().Close(gomock.Any()).Return(nil)
+	err = repo.SaveService(service)
 
-	// Execute
-	result, err := repo.GetAllServices()
-
-	// Verify
 	assert.NoError(t, err)
-	assert.Equal(t, expectedServices, result)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
-
-func TestServiceRepository_GetServiceByID(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockCollection := mocks.NewMockCollection(ctrl)
-	repo := repository.NewServiceRepository(mockCollection)
-
-	// Define expected data
-	serviceID := "service1"
-	expectedService := &model.Service{ID: serviceID, Name: "Service 1"}
-
-	// Simulate MongoDB FindOne behavior
-	mockSingleResult := mocks.NewMockSingleResult(ctrl)
-	mockCollection.EXPECT().
-		FindOne(gomock.Any(), bson.M{"id": serviceID}).
-		Return(mockSingleResult)
-
-	mockSingleResult.EXPECT().Decode(gomock.Any()).SetArg(0, *expectedService).Return(nil)
-
-	// Execute
-	result, err := repo.GetServiceByID(serviceID)
-
-	// Verify
+func TestRemoveService(t *testing.T) {
+	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-	assert.Equal(t, expectedService, result)
-}
+	defer db.Close()
 
-func TestServiceRepository_SaveService(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	repo := repository.NewServiceRepository(db)
 
-	mockCollection := mocks.NewMockCollection(ctrl)
-	repo := repository.NewServiceRepository(mockCollection)
+	serviceID := "service123"
 
-	// Define test data
-	newService := model.Service{ID: "service1", Name: "Service 1"}
+	mock.ExpectExec("DELETE FROM services WHERE id = ?").
+		WithArgs(serviceID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	// Simulate MongoDB InsertOne behavior
-	mockCollection.EXPECT().
-		InsertOne(gomock.Any(), newService).
-		Return(&mongo.InsertOneResult{}, nil)
+	err = repo.RemoveService(serviceID)
 
-	// Execute
-	err := repo.SaveService(newService)
-
-	// Verify
 	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
+func TestGetServiceByProviderID(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
 
-func TestServiceRepository_SaveAllServices(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	repo := repository.NewServiceRepository(db)
 
-	mockCollection := mocks.NewMockCollection(ctrl)
-	repo := repository.NewServiceRepository(mockCollection)
+	providerID := "provider123"
+	rows := sqlmock.NewRows([]string{"id", "name", "description", "price", "provider_id", "category"}).
+		AddRow("1", "Service A", "Description A", 100.0, providerID, "Category A").
+		AddRow("2", "Service B", "Description B", 200.0, providerID, "Category B")
 
-	// Define test data
+	mock.ExpectQuery("SELECT id, name, description, price, provider_id, category FROM services WHERE provider_id = ?").
+		WithArgs(providerID).
+		WillReturnRows(rows)
+
+	services, err := repo.GetServiceByProviderID(providerID)
+
+	assert.NoError(t, err)
+	assert.Len(t, services, 2)
+	assert.Equal(t, "Service A", services[0].Name)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+func TestSaveAllServices_Success(t *testing.T) {
+	// Mock the database and create a new ServiceRepository instance
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewServiceRepository(db)
+
+	// Mock services data
 	services := []model.Service{
-		{ID: "service1", Name: "Service 1"},
-		{ID: "service2", Name: "Service 2"},
+		{ID: "service1", Name: "Plumbing", Description: "Fix plumbing issues", Price: 100.0, ProviderID: "provider1", Category: "Home"},
+		{ID: "service2", Name: "Electrical", Description: "Fix electrical issues", Price: 200.0, ProviderID: "provider2", Category: "Maintenance"},
 	}
 
-	// Simulate MongoDB BulkWrite behavior
-	mockCollection.EXPECT().
-		BulkWrite(gomock.Any(), gomock.Any()).
-		Return(&mongo.BulkWriteResult{}, nil)
+	// Mock transaction and prepared statement
+	mock.ExpectBegin()
 
-	// Execute
-	err := repo.SaveAllServices(services)
+	query := regexp.QuoteMeta("INSERT INTO services (id, name, description, price, provider_id, category) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), price=VALUES(price), provider_id=VALUES(provider_id), category=VALUES(category)")
+	prep := mock.ExpectPrepare(query)
 
-	// Verify
+	for _, service := range services {
+		prep.ExpectExec().
+			WithArgs(service.ID, service.Name, service.Description, service.Price, service.ProviderID, service.Category).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+	}
+
+	mock.ExpectCommit()
+
+	// Call the function
+	err = repo.SaveAllServices(services)
+	assert.NoError(t, err)
+
+	// Ensure all expectations were met
+	err = mock.ExpectationsWereMet()
 	assert.NoError(t, err)
 }
 
-func TestServiceRepository_RemoveService(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockCollection := mocks.NewMockCollection(ctrl)
-	repo := repository.NewServiceRepository(mockCollection)
-
-	// Define test data
-	serviceID := "service1"
-
-	// Simulate MongoDB DeleteOne behavior
-	mockCollection.EXPECT().
-		DeleteOne(gomock.Any(), bson.M{"id": serviceID}).
-		Return(&mongo.DeleteResult{}, nil)
-
-	// Execute
-	err := repo.RemoveService(serviceID)
-
-	// Verify
+func TestSaveAllServices_FailureOnPrepare(t *testing.T) {
+	// Mock the database and create a new ServiceRepository instance
+	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewServiceRepository(db)
+
+	// Mock services data
+	services := []model.Service{
+		{ID: "service1", Name: "Plumbing", Description: "Fix plumbing issues", Price: 100.0, ProviderID: "provider1", Category: "Home"},
+	}
+
+	// Mock transaction and failure in Prepare statement
+	mock.ExpectBegin()
+
+	query := regexp.QuoteMeta("INSERT INTO services (id, name, description, price, provider_id, category) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), price=VALUES(price), provider_id=VALUES(provider_id), category=VALUES(category)")
+	mock.ExpectPrepare(query).WillReturnError(sql.ErrConnDone)
+
+	mock.ExpectRollback()
+
+	// Call the function
+	err = repo.SaveAllServices(services)
+	assert.Error(t, err)
+	assert.Equal(t, sql.ErrConnDone, err)
+
+	// Ensure all expectations were met
+	err = mock.ExpectationsWereMet()
+	assert.NoError(t, err)
+}
+
+func TestSaveAllServices_FailureOnExec(t *testing.T) {
+	// Mock the database and create a new ServiceRepository instance
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewServiceRepository(db)
+
+	// Mock services data
+	services := []model.Service{
+		{ID: "service1", Name: "Plumbing", Description: "Fix plumbing issues", Price: 100.0, ProviderID: "provider1", Category: "Home"},
+	}
+
+	// Mock transaction and prepared statement
+	mock.ExpectBegin()
+
+	query := regexp.QuoteMeta("INSERT INTO services (id, name, description, price, provider_id, category) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), price=VALUES(price), provider_id=VALUES(provider_id), category=VALUES(category)")
+	prep := mock.ExpectPrepare(query)
+
+	// Mock Exec failure
+	prep.ExpectExec().WithArgs("service1", "Plumbing", "Fix plumbing issues", 100.0, "provider1", "Home").
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectRollback()
+
+	// Call the function
+	err = repo.SaveAllServices(services)
+	assert.Error(t, err)
+	assert.Equal(t, sql.ErrNoRows, err)
+
+	// Ensure all expectations were met
+	err = mock.ExpectationsWereMet()
+	assert.NoError(t, err)
+}
+func TestGetServiceByName_Success(t *testing.T) {
+	// Mock the database and create a new ServiceRepository instance
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewServiceRepository(db)
+
+	// Mock service data
+	expectedService := model.Service{
+		ID:          "service123",
+		Name:        "Plumbing",
+		Description: "Fix water issues",
+		Price:       100.0,
+		ProviderID:  "provider123",
+		Category:    "Home",
+	}
+
+	// Mock the query result
+	query := regexp.QuoteMeta("SELECT id, name, description, price, provider_id, category FROM services WHERE name = ?")
+	rows := sqlmock.NewRows([]string{"id", "name", "description", "price", "provider_id", "category"}).
+		AddRow(expectedService.ID, expectedService.Name, expectedService.Description, expectedService.Price, expectedService.ProviderID, expectedService.Category)
+	mock.ExpectQuery(query).WithArgs("Plumbing").WillReturnRows(rows)
+
+	// Call the function
+	actualService, err := repo.GetServiceByName("Plumbing")
+	assert.NoError(t, err)
+	assert.NotNil(t, actualService)
+
+	// Assert the returned service matches the expected service
+	assert.Equal(t, &expectedService, actualService)
+
+	// Ensure all expectations were met
+	err = mock.ExpectationsWereMet()
+	assert.NoError(t, err)
+}
+
+func TestGetServiceByName_NoRows(t *testing.T) {
+	// Mock the database and create a new ServiceRepository instance
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewServiceRepository(db)
+
+	// Mock the query with no matching rows
+	query := regexp.QuoteMeta("SELECT id, name, description, price, provider_id, category FROM services WHERE name = ?")
+	mock.ExpectQuery(query).WithArgs("NonExistingService").WillReturnError(sql.ErrNoRows)
+
+	// Call the function
+	actualService, err := repo.GetServiceByName("NonExistingService")
+
+	// Assert that the service was not found and the error is correct
+	assert.Nil(t, actualService)
+	assert.EqualError(t, err, "service not found")
+
+	// Ensure all expectations were met
+	err = mock.ExpectationsWereMet()
+	assert.NoError(t, err)
+}
+
+func TestGetServiceByName_QueryError(t *testing.T) {
+	// Mock the database and create a new ServiceRepository instance
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewServiceRepository(db)
+
+	// Mock a query error
+	query := regexp.QuoteMeta("SELECT id, name, description, price, provider_id, category FROM services WHERE name = ?")
+	mock.ExpectQuery(query).WithArgs("Plumbing").WillReturnError(errors.New("database error"))
+
+	// Call the function
+	actualService, err := repo.GetServiceByName("Plumbing")
+
+	// Assert that an error was returned
+	assert.Nil(t, actualService)
+	assert.EqualError(t, err, "database error")
+
+	// Ensure all expectations were met
+	err = mock.ExpectationsWereMet()
+	assert.NoError(t, err)
+}
+func TestUpdateService_Success(t *testing.T) {
+	// Create a new SQL mock database
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Create the repository with the mock database
+	repo := repository.NewServiceRepository(db)
+
+	// Prepare mock expectation
+	query := regexp.QuoteMeta("UPDATE services SET name = ?, description = ?, price = ? WHERE provider_id= ? AND id=?")
+	mock.ExpectExec(query).
+		WithArgs("ServiceName", "ServiceDescription", 100.0, "provider1", "service1").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	// Create the service to update
+	service := model.Service{
+		ID:          "service1",
+		Name:        "ServiceName",
+		Description: "ServiceDescription",
+		Price:       100.0,
+	}
+
+	// Call the method
+	err = repo.UpdateService("provider1", service)
+
+	// Assert the expectations
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdateService_NoRowsAffected(t *testing.T) {
+	// Create a new SQL mock database
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Create the repository with the mock database
+	repo := repository.NewServiceRepository(db)
+
+	// Prepare mock expectation
+	query := regexp.QuoteMeta("UPDATE services SET name = ?, description = ?, price = ? WHERE provider_id= ? AND id=?")
+	mock.ExpectExec(query).
+		WithArgs("ServiceName", "ServiceDescription", 100.0, "provider1", "service1").
+		WillReturnResult(sqlmock.NewResult(1, 0))
+
+	// Create the service to update
+	service := model.Service{
+		ID:          "service1",
+		Name:        "ServiceName",
+		Description: "ServiceDescription",
+		Price:       100.0,
+	}
+
+	// Call the method
+	err = repo.UpdateService("provider1", service)
+
+	// Assert the expectations
+	assert.EqualError(t, err, "The service ID may not exist.")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdateService_Error(t *testing.T) {
+	// Create a new SQL mock database
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Create the repository with the mock database
+	repo := repository.NewServiceRepository(db)
+	// Prepare mock expectation
+	query := regexp.QuoteMeta("UPDATE services SET name = ?, description = ?, price = ? WHERE provider_id= ? AND id=?")
+	mock.ExpectExec(query).
+		WithArgs("ServiceName", "ServiceDescription", 100.0, "provider1", "service1").
+		WillReturnError(errors.New("some database error"))
+
+	// Create the service to update
+	service := model.Service{
+		ID:          "service1",
+		Name:        "ServiceName",
+		Description: "ServiceDescription",
+		Price:       100.0,
+	}
+
+	// Call the method
+	err = repo.UpdateService("provider1", service)
+
+	// Assert the expectations
+	assert.EqualError(t, err, "some database error")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+func TestRemoveServiceByProviderID_Success(t *testing.T) {
+	// Create a new SQL mock database
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Create the repository with the mock database
+	repo := repository.NewServiceRepository(db)
+	query := regexp.QuoteMeta("DELETE FROM services WHERE id = ? AND provider_id = ?")
+	// Prepare mock expectation
+	mock.ExpectExec(query).
+		WithArgs("service1", "provider1").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	// Call the method
+	err = repo.RemoveServiceByProviderID("provider1", "service1")
+
+	// Assert the expectations
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRemoveServiceByProviderID_NoRowsAffected(t *testing.T) {
+	// Create a new SQL mock database
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Create the repository with the mock database
+	repo := repository.NewServiceRepository(db)
+
+	query := regexp.QuoteMeta("DELETE FROM services WHERE id = ? AND provider_id = ?")
+	// Prepare mock expectation
+	mock.ExpectExec(query).
+		WithArgs("service1", "provider1").
+		WillReturnResult(sqlmock.NewResult(1, 0))
+
+	// Call the method
+	err = repo.RemoveServiceByProviderID("provider1", "service1")
+
+	// Assert the expectations
+	assert.EqualError(t, err, "Invalid service ID")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRemoveServiceByProviderID_Error(t *testing.T) {
+	// Create a new SQL mock database
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Create the repository with the mock database
+	repo := repository.NewServiceRepository(db)
+	query := regexp.QuoteMeta("DELETE FROM services WHERE id = ? AND provider_id = ?")
+	// Prepare mock expectation
+	mock.ExpectExec(query).
+		WithArgs("service1", "provider1").
+		WillReturnError(errors.New("some database error"))
+
+	// Call the method
+	err = repo.RemoveServiceByProviderID("provider1", "service1")
+
+	// Assert the expectations
+	assert.EqualError(t, err, "some database error")
+	assert.NoError(t, mock.ExpectationsWereMet())
 }

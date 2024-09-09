@@ -66,7 +66,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"serviceNest/database"
+	"serviceNest/config"
 	"syscall"
 )
 
@@ -79,11 +79,15 @@ func main() {
 
 func runApp() error {
 	// Initialize MongoDB Connection
-	client := database.Connect()
-	defer database.Disconnect()
+	client := config.GetMySQLDB()
+	defer func() {
+		client.Close()
+	}()
 
 	if client == nil {
 		return fmt.Errorf("error connecting to database")
+	} else {
+		log.Println("Connected to database MySql")
 	}
 
 	// Handle interrupt signals for graceful shutdown
@@ -91,8 +95,8 @@ func runApp() error {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		fmt.Println("\nDisconnecting from MongoDB...")
-		database.Disconnect()
+		fmt.Println("\nDisconnecting from MySql...")
+		client.Close()
 		os.Exit(1)
 	}()
 
@@ -106,11 +110,11 @@ func runApp() error {
 		fmt.Scanln(&choice)
 		switch choice {
 		case 1:
-			if err := SignUpUser(); err != nil {
+			if err := SignUpUser(client); err != nil {
 				color.Red("Error during signup: %s", err)
 			}
 		case 2:
-			if err := LoginUser(); err != nil {
+			if err := LoginUser(client); err != nil {
 				color.Red("Error during login: %s", err)
 			}
 		case 3:

@@ -8,10 +8,13 @@ import (
 	"serviceNest/model"
 )
 
+var Print = fmt.Printf
+var ReadFile = ioutil.ReadFile
+
 func DisplayCategory() {
 	var category []model.Category
 
-	file, err := ioutil.ReadFile(config.FILENAME)
+	file, err := ReadFile(config.FILENAME)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -20,7 +23,7 @@ func DisplayCategory() {
 		fmt.Println(err)
 	}
 	for i, service := range category {
-		fmt.Printf("%d Name : %s Description : %s", i+1, service.Name, service.Description)
+		Print("%d Name : %s Description : %s\n", i+1, service.Name, service.Description)
 		fmt.Println()
 	}
 }

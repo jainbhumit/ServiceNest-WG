@@ -1,114 +1,88 @@
 package repository_test
 
 import (
-	"errors"
-	"github.com/golang/mock/gomock"
+	"testing"
+
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"serviceNest/model"
 	"serviceNest/repository"
-	"serviceNest/tests/mocks"
-	"testing"
 )
 
 func TestSaveHouseholder(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockCollection := mocks.NewMockMongoCollection(ctrl)
-	repo := &repository.HouseholderRepository{
-		Collection: mockCollection,
-	}
-
-	householder := model.Householder{
-		User: model.User{
-			ID:       "householder1",
-			Name:     "John Doe",
-			Email:    "johndoe@example.com",
-			Password: "password123",
-		},
-	}
-
-	mockCollection.EXPECT().
-		InsertOne(gomock.Any(), householder).
-		Return(&mongo.InsertOneResult{}, nil)
-
-	err := repo.SaveHouseholder(householder)
+	// Create a new mock database
+	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
-}
+	defer db.Close()
 
-func TestSaveHouseholder_InsertError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	// Create a new instance of the repository
+	repo := repository.NewHouseholderRepository(db)
 
-	mockCollection := mocks.NewMockMongoCollection(ctrl)
-	repo := &repository.HouseholderRepository{
-		Collection: mockCollection,
-	}
-
-	householder := model.Householder{
+	// Create a test householder
+	householder := &model.Householder{
 		User: model.User{
-			ID:       "householder1",
-			Name:     "John Doe",
-			Email:    "johndoe@example.com",
-			Password: "password123",
+			ID:        "1",
+			Name:      "John Doe",
+			Email:     "john@example.com",
+			Password:  "password123",
+			Role:      "householder",
+			Address:   "123 Main St",
+			Contact:   "1234567890",
+			Latitude:  37.7749,
+			Longitude: -122.4194,
 		},
 	}
 
-	mockCollection.EXPECT().
-		InsertOne(gomock.Any(), householder).
-		Return(nil, errors.New("insert error"))
+	// Set up the expectation for the INSERT query
+	mock.ExpectExec("INSERT INTO users").
+		WithArgs(householder.ID, householder.Name, householder.Email, householder.Password, householder.Role, householder.Address, householder.Contact, householder.Latitude, householder.Longitude).
+		WillReturnResult(sqlmock.NewResult(1, 1)) // Return result as if one row was inserted
 
-	err := repo.SaveHouseholder(householder)
-	assert.Error(t, err)
-	assert.EqualError(t, err, "insert error")
+	// Call the method under test
+	err = repo.SaveHouseholder(householder)
+
+	// Assert that there was no error and expectations were met
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet()) // Ensure that all expectations are met
 }
 
 func TestGetHouseholderByID(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	// Create a new mock database
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
 
-	mockCollection := mocks.NewMockMongoCollection(ctrl)
-	repo := &repository.HouseholderRepository{
-		Collection: mockCollection,
-	}
+	// Create a new instance of the repository
+	repo := repository.NewHouseholderRepository(db)
 
-	householder := &model.Householder{
+	// Create the expected householder
+	expectedHouseholder := &model.Householder{
 		User: model.User{
-			ID:    "householder1",
-			Name:  "John Doe",
-			Email: "johndoe@example.com",
+			ID:        "1",
+			Name:      "John Doe",
+			Email:     "john@example.com",
+			Password:  "password123",
+			Role:      "householder",
+			Address:   "123 Main St",
+			Contact:   "1234567890",
+			Latitude:  37.7749,
+			Longitude: -122.4194,
 		},
 	}
 
-	mockResult := mongo.NewSingleResultFromDocument(householder, nil, nil)
+	// Set up the expectation for the SELECT query
+	rows := sqlmock.NewRows([]string{"id", "name", "email", "password", "role", "address", "contact", "latitude", "longitude"}).
+		AddRow(expectedHouseholder.ID, expectedHouseholder.Name, expectedHouseholder.Email, expectedHouseholder.Password, expectedHouseholder.Role, expectedHouseholder.Address, expectedHouseholder.Contact, expectedHouseholder.Latitude, expectedHouseholder.Longitude)
 
-	mockCollection.EXPECT().
-		FindOne(gomock.Any(), gomock.Eq(bson.M{"id": "householder1"})).
-		Return(mockResult)
+	mock.ExpectQuery("SELECT id, name, email, password, role, address, contact, latitude, longitude FROM users WHERE id = ?").
+		WithArgs(expectedHouseholder.ID).
+		WillReturnRows(rows)
 
-	result, err := repo.GetHouseholderByID("householder1")
+	// Call the method under test
+	householder, err := repo.GetHouseholderByID("1")
+
+	// Assert that there was no error and the householder matches the expected result
 	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, householder, result)
+	assert.Equal(t, expectedHouseholder, householder)
+	assert.NoError(t, mock.ExpectationsWereMet()) // Ensure that all expectations are met
 }
-
-//func TestGetHouseholderByID_NotFound(t *testing.T) {
-//	ctrl := gomock.NewController(t)
-//	defer ctrl.Finish()
-//
-//	mockCollection := mocks.NewMockMongoCollection(ctrl)
-//	repo := &repository.HouseholderRepository{
-//		Collection: mockCollection,
-//	}
-//
-//	mockCollection.EXPECT().
-//		FindOne(gomock.Any(), gomock.Eq(bson.M{"id": "householder1"})).
-//		Return(NewSingleResultFromError(mongo.ErrNoDocuments))
-//
-//	result, err := repo.GetHouseholderByID("householder1")
-//	assert.Error(t, err)
-//	assert.Nil(t, result)
-//	assert.EqualError(t, err, "householder not found")
-//}

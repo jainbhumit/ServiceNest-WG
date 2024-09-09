@@ -1,62 +1,63 @@
-//go:build !test
-// +build !test
-
 package repository
 
 import (
-	"context"
+	"database/sql"
 	"errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"serviceNest/config"
-	"serviceNest/database"
+	"log"
 	"serviceNest/interfaces"
 	"serviceNest/model"
-	"time"
 )
 
 type ServiceRepository struct {
-	Collection *mongo.Collection
+	db *sql.DB
 }
 
-// NewServiceRepository creates a new instance of ServiceRepository
-func NewServiceRepository(collection *mongo.Collection) interfaces.ServiceRepository {
-	if collection == nil {
-		// Default to the real MongoDB collection if none is provided
-		collection = database.GetCollection(config.DB, config.SERVICECOLLECTION)
-	}
-	return &ServiceRepository{Collection: collection}
+// NewServiceRepository creates a new instance of ServiceRepository for MySQL
+func NewServiceRepository(client *sql.DB) interfaces.ServiceRepository {
+	return &ServiceRepository{db: client}
 }
 
-// GetAllServices fetches all available services from the MongoDB database
-func (repo *ServiceRepository) GetAllServices() ([]*model.Service, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	cursor, err := repo.Collection.Find(ctx, bson.M{})
+func (repo *ServiceRepository) GetAllServices() ([]model.Service, error) {
+	query := "SELECT id, name, description, price, provider_id, category FROM services"
+	rows, err := repo.db.Query(query)
 	if err != nil {
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer rows.Close()
 
-	var services []*model.Service
-	if err = cursor.All(ctx, &services); err != nil {
+	var services []model.Service
+	for rows.Next() {
+		var service model.Service
+		var providerID sql.NullString
+
+		if err := rows.Scan(&service.ID, &service.Name, &service.Description, &service.Price, &providerID, &service.Category); err != nil {
+			return nil, err
+		}
+
+		if providerID.Valid {
+			service.ProviderID = providerID.String
+		} else {
+			service.ProviderID = ""
+		}
+
+		services = append(services, service)
+	}
+
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
 	return services, nil
 }
 
-// GetServiceByID retrieves a service_test by its ID
+// GetServiceByID retrieves a service by its ID
 func (repo *ServiceRepository) GetServiceByID(serviceID string) (*model.Service, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+	query := "SELECT id, name, description, price, provider_id, category FROM services WHERE id = ?"
 	var service model.Service
-	err := repo.Collection.FindOne(ctx, bson.M{"id": serviceID}).Decode(&service)
+	err := repo.db.QueryRow(query, serviceID).Scan(&service.ID, &service.Name, &service.Description, &service.Price, &service.ProviderID, &service.Category)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, errors.New("service_test not found")
+		if err == sql.ErrNoRows {
+			return nil, errors.New("service not found")
 		}
 		return nil, err
 	}
@@ -64,40 +65,121 @@ func (repo *ServiceRepository) GetServiceByID(serviceID string) (*model.Service,
 	return &service, nil
 }
 
-// SaveService adds a new service_test to the MongoDB database
+// SaveService adds a new service to the MySQL database
 func (repo *ServiceRepository) SaveService(service model.Service) error {
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	_, err := repo.Collection.InsertOne(ctx, service)
-
+	query := "INSERT INTO services (id, name, description, price, provider_id, category) VALUES (?, ?, ?, ?, ?, ?)"
+	var providerID *string
+	if service.ProviderID == "" {
+		providerID = nil
+	} else {
+		providerID = &service.ProviderID
+	}
+	_, err := repo.db.Exec(query, service.ID, service.Name, service.Description, service.Price, providerID, service.Category)
 	return err
 }
 
-// SaveAllServices saves the entire list of services to the MongoDB database
+// SaveAllServices saves the entire list of services to the MySQL database
 func (repo *ServiceRepository) SaveAllServices(services []model.Service) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var operations []mongo.WriteModel
-	for _, service := range services {
-		operation := mongo.NewUpdateOneModel().
-			SetFilter(bson.M{"id": service.ID}).
-			SetUpdate(bson.M{"$set": service}).
-			SetUpsert(true)
-		operations = append(operations, operation)
+	tx, err := repo.db.Begin()
+	if err != nil {
+		return err
 	}
 
-	_, err := repo.Collection.BulkWrite(ctx, operations)
-	return err
+	stmt, err := tx.Prepare("INSERT INTO services (id, name, description, price, provider_id, category) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), price=VALUES(price), provider_id=VALUES(provider_id), category=VALUES(category)")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	for _, service := range services {
+		if _, err := stmt.Exec(service.ID, service.Name, service.Description, service.Price, service.ProviderID, service.Category); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
-// RemoveService removes a service_test from the MongoDB database
+// RemoveService removes a service from the MySQL database
 func (repo *ServiceRepository) RemoveService(serviceID string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	_, err := repo.Collection.DeleteOne(ctx, bson.M{"id": serviceID})
+	query := "DELETE FROM services WHERE id = ?"
+	_, err := repo.db.Exec(query, serviceID)
 	return err
+}
+func (repo *ServiceRepository) GetServiceByName(serviceName string) (*model.Service, error) {
+	query := "SELECT id, name, description, price, provider_id, category FROM services WHERE name = ?"
+	var service model.Service
+	err := repo.db.QueryRow(query, serviceName).Scan(&service.ID, &service.Name, &service.Description, &service.Price, &service.ProviderID, &service.Category)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("service not found")
+		}
+		return nil, err
+	}
+	return &service, nil
+}
+
+// GetServiceByProviderID retrieves a service by its ProviderID
+func (repo *ServiceRepository) GetServiceByProviderID(providerID string) ([]model.Service, error) {
+	query := "SELECT id, name, description, price, provider_id, category FROM services WHERE provider_id = ?"
+	rows, err := repo.db.Query(query, providerID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("service not found")
+		}
+		return nil, err
+	}
+	var services []model.Service
+	for rows.Next() {
+		var service model.Service
+		err := rows.Scan(&service.ID, &service.Name, &service.Description, &service.Price, &service.ProviderID, &service.Category)
+		if err != nil {
+			return nil, err
+		} else {
+			services = append(services, service)
+		}
+	}
+
+	return services, nil
+}
+
+func (repo *ServiceRepository) UpdateService(providerID string, updatedService model.Service) error {
+	query := "UPDATE services SET name = ?, description = ?, price = ? WHERE provider_id= ? AND id=?;"
+	result, err := repo.db.Exec(query, updatedService.Name, updatedService.Description, updatedService.Price, providerID, updatedService.ID)
+	// Check how many rows were affected
+	if err != nil {
+		log.Println("Error executing update query:", err)
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Println("Error getting rows affected:", err)
+	}
+
+	if rowsAffected == 0 {
+		return errors.New("The service ID may not exist.")
+	}
+	return nil
+}
+
+func (repo *ServiceRepository) RemoveServiceByProviderID(providerID string, serviceID string) error {
+	query := "DELETE FROM services WHERE id = ? AND provider_id = ?"
+	result, err := repo.db.Exec(query, serviceID, providerID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		// Return a custom error or handle it as needed
+		return errors.New("Invalid service ID")
+	}
+
+	return nil
 }

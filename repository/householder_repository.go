@@ -1,48 +1,37 @@
 package repository
 
 import (
-	"context"
-	"fmt"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"serviceNest/config"
-	"serviceNest/database"
+	"database/sql"
 	"serviceNest/interfaces"
 	"serviceNest/model"
-	"time"
 )
 
-type HouseholderRepository struct {
-	Collection interfaces.MongoCollection
+type MySQLHouseholderRepository struct {
+	db *sql.DB
 }
 
-// NewHouseholderRepository initializes a new HouseholderRepository
-func NewHouseholderRepository() interfaces.HouseholderRepository {
-	collection := &MongoCollectionImpl{collection: database.GetCollection(config.DB, config.USERCOLLECTION)}
-	return &HouseholderRepository{Collection: collection}
+// NewHouseholderRepository creates a new instance of MySQLHouseholderRepository
+func NewHouseholderRepository(client *sql.DB) interfaces.HouseholderRepository {
+	return &MySQLHouseholderRepository{
+		db: client,
+	}
 }
 
-// SaveHouseholder saves a new householder to the database
-func (repo *HouseholderRepository) SaveHouseholder(householder model.Householder) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	_, err := repo.Collection.InsertOne(ctx, householder)
+func (repo *MySQLHouseholderRepository) SaveHouseholder(householder *model.Householder) error {
+	query := "INSERT INTO users (id, name, email, password, role, address, contact, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	_, err := repo.db.Exec(query, householder.ID, householder.Name, householder.Email, householder.Password, householder.Role, householder.Address, householder.Contact, householder.Latitude, householder.Longitude)
 	return err
 }
 
-// GetHouseholderByID retrieves a householder by their ID
-func (repo *HouseholderRepository) GetHouseholderByID(id string) (*model.Householder, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+func (repo *MySQLHouseholderRepository) GetHouseholderByID(id string) (*model.Householder, error) {
+	query := "SELECT id, name, email, password, role, address, contact, latitude, longitude FROM users WHERE id = ?"
+	row := repo.db.QueryRow(query, id)
 
 	var householder model.Householder
-	err := repo.Collection.FindOne(ctx, bson.M{"id": id}).Decode(&householder)
+	err := row.Scan(&householder.ID, &householder.Name, &householder.Email, &householder.Password, &householder.Role, &householder.Address, &householder.Contact, &householder.Latitude, &householder.Longitude)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("householder not found")
-		}
 		return nil, err
 	}
+
 	return &householder, nil
 }

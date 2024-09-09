@@ -7,7 +7,6 @@ package mocks
 import (
 	reflect "reflect"
 	model "serviceNest/model"
-	repository "serviceNest/repository"
 
 	gomock "github.com/golang/mock/gomock"
 )
@@ -65,23 +64,8 @@ func (mr *MockUserRepositoryMockRecorder) GetUserByID(userID interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByID", reflect.TypeOf((*MockUserRepository)(nil).GetUserByID), userID)
 }
 
-// Login mocks base method.
-func (m *MockUserRepository) Login(userRepo *repository.UserRepository) (*model.User, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Login", userRepo)
-	ret0, _ := ret[0].(*model.User)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Login indicates an expected call of Login.
-func (mr *MockUserRepositoryMockRecorder) Login(userRepo interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Login", reflect.TypeOf((*MockUserRepository)(nil).Login), userRepo)
-}
-
 // SaveUser mocks base method.
-func (m *MockUserRepository) SaveUser(user model.User) error {
+func (m *MockUserRepository) SaveUser(user *model.User) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveUser", user)
 	ret0, _ := ret[0].(error)
@@ -92,21 +76,6 @@ func (m *MockUserRepository) SaveUser(user model.User) error {
 func (mr *MockUserRepositoryMockRecorder) SaveUser(user interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveUser", reflect.TypeOf((*MockUserRepository)(nil).SaveUser), user)
-}
-
-// SignUp mocks base method.
-func (m *MockUserRepository) SignUp(userRepo *repository.UserRepository) (*model.User, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SignUp", userRepo)
-	ret0, _ := ret[0].(*model.User)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SignUp indicates an expected call of SignUp.
-func (mr *MockUserRepositoryMockRecorder) SignUp(userRepo interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SignUp", reflect.TypeOf((*MockUserRepository)(nil).SignUp), userRepo)
 }
 
 // UpdateUser mocks base method.

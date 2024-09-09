@@ -5,6 +5,7 @@ package main
 
 import (
 	"bufio"
+	"database/sql"
 	"fmt"
 	"github.com/fatih/color"
 	"os"
@@ -108,7 +109,7 @@ func viewProfile(user *model.User) {
 	color.Cyan("User Role: %s\n", currUser.Role)
 	for {
 		color.Blue("For updateProfile press 1")
-		color.Blue("For going back press 2")
+		color.Blue("For previous menu press 2")
 		var choice int
 		fmt.Scanln(&choice)
 		if choice == 1 {
@@ -250,17 +251,28 @@ func viewBookingHistory(householderService *service.HouseholderService, user *mo
 
 // LeaveReview allows the householder to leave a review for a service_test provider
 func leaveReview(householderService *service.HouseholderService, user *model.User) {
-	var serviceID, reviewText string
+	var serviceID, providerID string
+
 	var rating float64
 
 	fmt.Print("Enter the Service ID you want to review: ")
 	fmt.Scanln(&serviceID)
+
+	fmt.Print("Enter the Provider ID you want to review: ")
+	fmt.Scanln(&providerID)
+
 	fmt.Print("Enter your review: ")
-	fmt.Scanln(&reviewText)
+	reader := bufio.NewReader(os.Stdin)
+	reviewText, err := reader.ReadString('\n')
+	if err != nil {
+		color.Red("Error submitting review: %v", err)
+		return
+	}
 	fmt.Print("Enter your rating (1-5): ")
 	fmt.Scanln(&rating)
 
-	err := householderService.AddReview(user.ID, serviceID, reviewText, rating)
+	// Call the AddReview method with the providerID now included
+	err = householderService.AddReview(providerID, user.ID, serviceID, reviewText, rating)
 	if err != nil {
 		color.Red("Error submitting review: %v", err)
 		return
@@ -343,7 +355,7 @@ func viewStatus(householderService *service.HouseholderService, householder *mod
 				color.Green("Address: %s", provider.Address)
 				color.Green("Price: %s", provider.Price)
 				color.Green("Rating: %v", provider.Rating)
-				fmt.Println("Reviews for ", provider.Name)
+				//fmt.Println("Reviews for ", provider.Name)
 				if len(provider.Reviews) == 0 {
 					color.Cyan("Provider has no Rivews.")
 					continue
@@ -438,40 +450,44 @@ func viewApprovedRequests(householderService *service.HouseholderService, househ
 
 	fmt.Println("Approved Service Requests:")
 	for _, req := range approvedRequests {
-		fmt.Printf("\nRequest ID: %s\n", req.ID)
-		fmt.Printf("Service ID: %s\n", req.ServiceID)
-		fmt.Printf("Requested Time: %s\n", req.RequestedTime.Format("2006-01-02 15:04:05"))
-		fmt.Printf("Scheduled Time: %s\n", req.ScheduledTime.Format("2006-01-02 15:04:05"))
-		fmt.Printf("Status: %s\n", req.Status)
-		fmt.Println("Provider Details:")
+		if req.ApproveStatus {
+			fmt.Printf("\nRequest ID: %s\n", req.ID)
+			fmt.Printf("Service ID: %s\n", req.ServiceID)
+			fmt.Printf("Requested Time: %s\n", req.RequestedTime.Format("2006-01-02 15:04:05"))
+			fmt.Printf("Scheduled Time: %s\n", req.ScheduledTime.Format("2006-01-02 15:04:05"))
+			fmt.Printf("Status: %s\n", req.Status)
+			fmt.Println("Provider Details:")
+			for _, provider := range req.ProviderDetails {
 
-		for _, provider := range req.ProviderDetails {
-			if provider.Approve {
-				fmt.Printf("\tProvider ID: %s\n", provider.ServiceProviderID)
-				fmt.Printf("\tName: %s\n", provider.Name)
-				fmt.Printf("\tContact: %s\n", provider.Contact)
-				fmt.Printf("\tAddress: %s\n", provider.Address)
-				fmt.Printf("\tPrice: %s\n", provider.Price)
-				fmt.Printf("\tRating: %.2f\n", provider.Rating)
-				fmt.Println("\tReviews:")
-				for _, review := range provider.Reviews {
-					fmt.Printf("\t\tReview ID: %s\n", review.ID)
-					fmt.Printf("\t\tRating: %.2f\n", review.Rating)
-					fmt.Printf("\t\tComments: %s\n", review.Comments)
-					fmt.Printf("\t\tReview Date: %s\n", review.ReviewDate.Format("2006-01-02"))
+				if provider.Approve {
+					fmt.Printf("\tProvider ID: %s\n", provider.ServiceProviderID)
+					fmt.Printf("\tName: %s\n", provider.Name)
+					fmt.Printf("\tContact: %s\n", provider.Contact)
+					fmt.Printf("\tAddress: %s\n", provider.Address)
+					fmt.Printf("\tPrice: %s\n", provider.Price)
+					fmt.Printf("\tRating: %.2f\n", provider.Rating)
+					//fmt.Println("\tReviews:")
+					for _, review := range provider.Reviews {
+						fmt.Printf("\t\tReview ID: %s\n", review.ID)
+						fmt.Printf("\t\tRating: %.2f\n", review.Rating)
+						fmt.Printf("\t\tComments: %s\n", review.Comments)
+						fmt.Printf("\t\tReview Date: %s\n", review.ReviewDate.Format("2006-01-02"))
+					}
 				}
 			}
 		}
+
 	}
 }
 
 // HouseholderDashboard is the main dashboard for householder actions
-func householderDashboard(user *model.User) {
+func householderDashboard(user *model.User, client *sql.DB) {
+
 	// Initialize repositories and services
-	householderRepo := repository.NewHouseholderRepository()
-	serviceRequestRepo := repository.NewServiceRequestRepository(nil)
-	serviceProviderRepo := repository.NewServiceProviderRepository(nil)
-	serviceRepo := repository.NewServiceRepository(nil)
+	householderRepo := repository.NewHouseholderRepository(client)
+	serviceRequestRepo := repository.NewServiceRequestRepository(client)
+	serviceProviderRepo := repository.NewServiceProviderRepository(client)
+	serviceRepo := repository.NewServiceRepository(client)
 	householderService := service.NewHouseholderService(householderRepo, serviceProviderRepo, serviceRepo, serviceRequestRepo)
 
 	// Convert the User to a Householder

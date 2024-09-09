@@ -4,8 +4,11 @@
 package main
 
 import (
+	"bufio"
+	"database/sql"
 	"fmt"
 	"github.com/fatih/color"
+	"os"
 	"serviceNest/model"
 	"serviceNest/repository"
 	"serviceNest/service"
@@ -13,10 +16,10 @@ import (
 	"time"
 )
 
-func serviceProviderDashboard(user *model.User) {
-	serviceRepo := repository.NewServiceRepository(nil)
-	requestRepo := repository.NewServiceRequestRepository(nil)
-	providerRepo := repository.NewServiceProviderRepository(nil)
+func serviceProviderDashboard(user *model.User, client *sql.DB) {
+	serviceRepo := repository.NewServiceRepository(client)
+	requestRepo := repository.NewServiceRequestRepository(client)
+	providerRepo := repository.NewServiceProviderRepository(client)
 
 	providerService := service.NewServiceProviderService(providerRepo, requestRepo, serviceRepo)
 	//provider := &model.ServiceProvider{
@@ -67,8 +70,9 @@ func serviceProviderDashboard(user *model.User) {
 		color.Blue("7. Decline Service Request")
 		color.Blue("8. Update Availability")
 		color.Blue("9. View Approved Services")
+		color.Blue("10. View Reviews")
 
-		color.Blue("10. Exit")
+		color.Blue("11. Exit")
 
 		var choice int
 		fmt.Scanln(&choice)
@@ -93,6 +97,8 @@ func serviceProviderDashboard(user *model.User) {
 		case 9:
 			viewApprovedRequestsForProvider(providerService, provider.User.ID)
 		case 10:
+			viewReview(providerService, provider.User.ID)
+		case 11:
 			return
 		default:
 			color.Red("Invalid choice")
@@ -102,13 +108,18 @@ func serviceProviderDashboard(user *model.User) {
 
 func addService(providerService *service.ServiceProviderService, provider *model.ServiceProvider) {
 	util.DisplayCategory()
-	var serviceName, description, category string
+	var serviceName, category string
 	var price float64
 
 	fmt.Print("Enter service name: ")
 	fmt.Scanln(&serviceName)
 	fmt.Print("Enter description: ")
-	fmt.Scanln(&description)
+	reader := bufio.NewReader(os.Stdin)
+	description, err := reader.ReadString('\n')
+	if err != nil {
+		color.Red("Error reading desciption")
+		return
+	}
 	fmt.Print("Enter category: ")
 	fmt.Scanln(&category)
 	fmt.Print("Enter price: ")
@@ -127,7 +138,7 @@ func addService(providerService *service.ServiceProviderService, provider *model
 		ProviderRating:  provider.Rating,
 	}
 
-	err := providerService.AddService(provider.ID, service)
+	err = providerService.AddService(provider.ID, service)
 	if err != nil {
 		color.Red("Error adding service_test: %v", err)
 		return
@@ -137,15 +148,20 @@ func addService(providerService *service.ServiceProviderService, provider *model
 }
 
 func updateService(providerService *service.ServiceProviderService, provider *model.ServiceProvider) {
-	var serviceID, newName, newDescription string
+	var serviceID, newName string
 	var newPrice float64
 
 	fmt.Print("Enter service ID to update: ")
 	fmt.Scanln(&serviceID)
-	fmt.Print("Enter new service_test name: ")
+	fmt.Print("Enter new service name: ")
 	fmt.Scanln(&newName)
 	fmt.Print("Enter new description: ")
-	fmt.Scanln(&newDescription)
+	reader := bufio.NewReader(os.Stdin)
+	newDescription, err := reader.ReadString('\n')
+	if err != nil {
+		color.Red("Error reading desciption")
+		return
+	}
 	fmt.Print("Enter new price: ")
 	fmt.Scanln(&newPrice)
 
@@ -156,9 +172,9 @@ func updateService(providerService *service.ServiceProviderService, provider *mo
 		Price:       newPrice,
 	}
 
-	err := providerService.UpdateService(provider.ID, serviceID, updatedService)
+	err = providerService.UpdateService(provider.ID, serviceID, updatedService)
 	if err != nil {
-		color.Red("Error updating service_test: %v", err)
+		color.Red("Error updating service: %v", err)
 		return
 	}
 
@@ -178,21 +194,6 @@ func removeService(providerService *service.ServiceProviderService, provider *mo
 	}
 
 	color.Green("Service removed successfully!")
-}
-
-func acceptServiceRequest(providerService *service.ServiceProviderService, provider *model.ServiceProvider) {
-	var requestID string
-
-	fmt.Print("Enter service request ID to accept: ")
-	fmt.Scanln(&requestID)
-
-	err := providerService.AcceptServiceRequest(provider.ID, requestID)
-	if err != nil {
-		color.Red("Error accepting service request: %v", err)
-		return
-	}
-
-	color.Green("Service request accepted successfully!")
 }
 
 func declineServiceRequest(providerService *service.ServiceProviderService, provider *model.ServiceProvider) {
@@ -254,7 +255,7 @@ func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService
 	// Filter and display only pending requests
 	var pendingRequests []model.ServiceRequest
 	for _, request := range serviceRequests {
-		if request.ApproveStatus == false {
+		if request.ApproveStatus == false && request.Status != "Cancelled" {
 			pendingRequests = append(pendingRequests, request)
 			color.Cyan("Request ID: %s, Service ID: %s", request.ID, request.ServiceID)
 		}
@@ -270,7 +271,7 @@ func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService
 	fmt.Print("Enter the Service Request ID to view and accept: ")
 	fmt.Scanln(&requestID)
 
-	// Fetch the service_test request by ID
+	// Fetch the service request by ID
 	serviceRequest, err := providerService.GetServiceRequestByID(requestID)
 	if err != nil {
 		color.Red("Error fetching service request: %v", err)
@@ -281,10 +282,11 @@ func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService
 	color.Cyan("Service Request Details:")
 	color.Cyan("Request ID: %s", serviceRequest.ID)
 	color.Cyan("Householder ID: %v", serviceRequest.HouseholderID)
+	color.Cyan("Service Name: %s", serviceRequest.ServiceName)
 	color.Cyan("Service ID: %s", serviceRequest.ServiceID)
 	color.Cyan("Requested Time: %s", serviceRequest.RequestedTime.Format(time.RFC1123))
 	color.Cyan("Scheduled Time: %s", serviceRequest.ScheduledTime.Format(time.RFC1123))
-	color.Cyan("Status: %s", serviceRequest.Status)
+	//color.Cyan("Status: %s", serviceRequest.Status)
 
 	// Ask if the service provider wants to accept the request
 	var accept string
@@ -305,7 +307,7 @@ func viewAndAcceptServiceRequest(providerService *service.ServiceProviderService
 }
 func viewApprovedRequestsForProvider(serviceProviderService *service.ServiceProviderService, providerID string) {
 	// Call the service method to get approved requests
-	approvedRequests, err := serviceProviderService.ViewApprovedRequests(providerID)
+	approvedRequests, err := serviceProviderService.ViewApprovedRequestsByHouseholder(providerID)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
@@ -345,5 +347,21 @@ func viewApprovedRequestsForProvider(serviceProviderService *service.ServiceProv
 				}
 			}
 		}
+	}
+}
+
+func viewReview(serviceProviderService *service.ServiceProviderService, providerID string) {
+	reviews, err := serviceProviderService.GetReviews(providerID)
+	if err != nil {
+		color.Red("Error fetching reviews: %v", err)
+		return
+	}
+	for _, review := range reviews {
+		color.Cyan("ServiceID: %v ", review.ServiceID)
+		color.Cyan("Rating: %v ", review.Rating)
+		color.Cyan("Comments: %v", review.Comments)
+		color.Cyan("Date: %v", review.ReviewDate)
+		color.Cyan("----------------------------------------")
+
 	}
 }

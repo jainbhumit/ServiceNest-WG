@@ -49,6 +49,21 @@ func (mr *MockServiceRequestRepositoryMockRecorder) GetAllServiceRequests() *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllServiceRequests", reflect.TypeOf((*MockServiceRequestRepository)(nil).GetAllServiceRequests))
 }
 
+// GetServiceProviderByRequestID mocks base method.
+func (m *MockServiceRequestRepository) GetServiceProviderByRequestID(requestID, providerID string) (*model.ServiceRequest, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetServiceProviderByRequestID", requestID, providerID)
+	ret0, _ := ret[0].(*model.ServiceRequest)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetServiceProviderByRequestID indicates an expected call of GetServiceProviderByRequestID.
+func (mr *MockServiceRequestRepositoryMockRecorder) GetServiceProviderByRequestID(requestID, providerID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServiceProviderByRequestID", reflect.TypeOf((*MockServiceRequestRepository)(nil).GetServiceProviderByRequestID), requestID, providerID)
+}
+
 // GetServiceRequestByID mocks base method.
 func (m *MockServiceRequestRepository) GetServiceRequestByID(requestID string) (*model.ServiceRequest, error) {
 	m.ctrl.T.Helper()
@@ -123,7 +138,7 @@ func (mr *MockServiceRequestRepositoryMockRecorder) SaveServiceRequest(request i
 }
 
 // UpdateServiceRequest mocks base method.
-func (m *MockServiceRequestRepository) UpdateServiceRequest(updatedRequest model.ServiceRequest) error {
+func (m *MockServiceRequestRepository) UpdateServiceRequest(updatedRequest *model.ServiceRequest) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateServiceRequest", updatedRequest)
 	ret0, _ := ret[0].(error)

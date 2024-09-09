@@ -95,7 +95,7 @@ func TestGetAllService(t *testing.T) {
 
 	adminService := service.NewAdminService(mockServiceRepo, mockServiceRequestRepo, mockUserRepo, mockProviderRepo)
 
-	services := []*model.Service{
+	services := []model.Service{
 		{ID: "service1", Name: "Service 1"},
 		{ID: "service2", Name: "Service 2"},
 	}

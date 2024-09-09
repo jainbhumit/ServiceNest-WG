@@ -4,6 +4,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/fatih/color"
 	"serviceNest/model"
@@ -12,11 +13,11 @@ import (
 )
 
 // AdminDashboard is the main dashboard for admin actions
-func adminDashboard(admin *model.Admin) {
-	serviceRepo := repository.NewServiceRepository(nil)
-	userRepo := repository.NewUserRepository(nil)
-	serviceRequestRepo := repository.NewServiceRequestRepository(nil)
-	providerRepo := repository.NewServiceProviderRepository(nil)
+func adminDashboard(admin *model.Admin, client *sql.DB) {
+	serviceRepo := repository.NewServiceRepository(client)
+	userRepo := repository.NewUserRepository(client)
+	serviceRequestRepo := repository.NewServiceRequestRepository(client)
+	providerRepo := repository.NewServiceProviderRepository(client)
 
 	adminService := service.NewAdminService(serviceRepo, serviceRequestRepo, userRepo, providerRepo)
 
@@ -51,25 +52,28 @@ func adminDashboard(admin *model.Admin) {
 
 // ManageServices handles the services management functionality
 func manageServices(adminService *service.AdminService) {
-	color.Blue("Manage Services")
-	color.Blue("1. View All Services")
-	//color.Blue("2. Update Service")
-	color.Blue("2. Delete Service")
-	color.Blue("3. Back to Dashboard")
+	for {
+		color.Blue("Manage Services")
+		color.Blue("1. View All Services")
+		//color.Blue("2. Update Service")
+		color.Blue("2. Delete Service")
+		color.Blue("3. Back to Dashboard")
 
-	var choice int
-	fmt.Scanln(&choice)
+		var choice int
+		fmt.Scanln(&choice)
 
-	switch choice {
-	case 1:
-		viewAllServices(adminService)
-	case 2:
-		deleteService(adminService)
-	case 4:
-		return
-	default:
-		color.Red("Invalid choice")
+		switch choice {
+		case 1:
+			viewAllServices(adminService)
+		case 2:
+			deleteService(adminService)
+		case 4:
+			return
+		default:
+			color.Red("Invalid choice")
+		}
 	}
+
 }
 
 // ViewAllServices displays all the services available
@@ -110,10 +114,11 @@ func viewReports(adminService *service.AdminService) {
 	}
 
 	for _, report := range reports {
-		color.Cyan("Report ID: %v, Details: Service Name- %v ", report.ID, report.ServiceID)
+		color.Cyan("Report ID: %v, Details: Service ID- %v ", report.ID, report.ServiceID)
 		color.Cyan("Service Providers :")
 		for _, provider := range report.ProviderDetails {
-			color.Cyan("Name: %v Contact: %v ", provider.Name, provider.Contact)
+			color.Cyan("ProviderID: %v", provider.ServiceProviderID)
+			color.Cyan("Name: %v Contact: %v Address: %v Rating: %v ", provider.Name, provider.Contact, provider.Address, provider.Rating)
 			color.Cyan("-----------------")
 		}
 		fmt.Println()

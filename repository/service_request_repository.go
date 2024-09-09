@@ -1,156 +1,349 @@
-//go:build !test
-// +build !test
-
 package repository
 
 import (
-	"context"
+	"database/sql"
 	"errors"
 	"fmt"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"serviceNest/config"
-	"serviceNest/database"
 	"serviceNest/interfaces"
 	"serviceNest/model"
-	"time"
+	"serviceNest/util"
 )
 
 type ServiceRequestRepository struct {
-	collection *mongo.Collection
+	db *sql.DB
 }
 
-// NewServiceRequestRepository initializes a new ServiceRequestRepository with MongoDB
-func NewServiceRequestRepository(collection *mongo.Collection) interfaces.ServiceRequestRepository {
-	if collection == nil {
-		collection = database.GetCollection(config.DB, config.SERVICEREQUESTSCOLLECTION)
-	}
-	return &ServiceRequestRepository{collection: collection}
+// NewServiceRequestRepository initializes a new ServiceRequestRepository with MySQL
+func NewServiceRequestRepository(db *sql.DB) interfaces.ServiceRequestRepository {
+	return &ServiceRequestRepository{db: db}
 }
 
-// SaveServiceRequest saves a service_test request to the MongoDB collection
+// SaveServiceRequest saves a service request to the MySQL database
 func (repo *ServiceRequestRepository) SaveServiceRequest(request model.ServiceRequest) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	query := `
+		INSERT INTO service_requests 
+		(id, householder_id, householder_name, householder_address, service_id, requested_time, scheduled_time, status, approve_status) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
 
-	_, err := repo.collection.InsertOne(ctx, request)
+	_, err := repo.db.Exec(query, request.ID, request.HouseholderID, request.HouseholderName, request.HouseholderAddress, request.ServiceID, request.RequestedTime, request.ScheduledTime, request.Status, request.ApproveStatus)
 	return err
 }
 
-// GetServiceRequestByID retrieves a service_test request by its ID from MongoDB
+// GetServiceRequestByID retrieves a service request by its ID from MySQL
 func (repo *ServiceRequestRepository) GetServiceRequestByID(requestID string) (*model.ServiceRequest, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	query := `
+		SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, 
+		       s.name as service_name, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status 
+		FROM service_requests sr
+		INNER JOIN services s ON sr.service_id = s.id
+		WHERE sr.id = ?
+	`
 
 	var request model.ServiceRequest
-	err := repo.collection.FindOne(ctx, bson.M{"ID": requestID}).Decode(&request)
+	var requestedTime []uint8
+	var scheduledTime []uint8
+
+	// Execute the query
+	err := repo.db.QueryRow(query, requestID).Scan(
+		&request.ID, &request.HouseholderID, &request.HouseholderName, &request.HouseholderAddress,
+		&request.ServiceID, &request.ServiceName, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus,
+	)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, errors.New("service_test request not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("service request not found")
 		}
 		return nil, err
+	}
+
+	// Parse the times
+	request.RequestedTime, err = util.ParseTime(requestedTime)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing requested_time: %v", err)
+	}
+
+	request.ScheduledTime, err = util.ParseTime(scheduledTime)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing scheduled_time: %v", err)
 	}
 
 	return &request, nil
 }
 
-// GetServiceRequestsByHouseholderID retrieves all service_test requests made by a specific householder from MongoDB
 func (repo *ServiceRequestRepository) GetServiceRequestsByHouseholderID(householderID string) ([]model.ServiceRequest, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	query := `
+		SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, 
+		       sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status, spd.service_provider_id, spd.name,
+		       spd.contact, spd.address, spd.price, spd.rating, spd.approve
+		FROM service_requests AS sr 
+		LEFT JOIN service_provider_details AS spd ON sr.id = spd.service_request_id
+		WHERE householder_id = ?
+	`
 
-	cursor, err := repo.collection.Find(ctx, bson.M{"HouseholderID": householderID})
+	rows, err := repo.db.Query(query, householderID)
 	if err != nil {
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer rows.Close()
 
 	var requests []model.ServiceRequest
-	if err = cursor.All(ctx, &requests); err != nil {
-		return nil, err
-	}
-
-	return requests, nil
-}
-
-// UpdateServiceRequest updates an existing service_test request in MongoDB
-func (repo *ServiceRequestRepository) UpdateServiceRequest(updatedRequest model.ServiceRequest) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	_, err := repo.collection.UpdateOne(
-		ctx,
-		bson.M{"ID": updatedRequest.ID},
-		bson.M{"$set": updatedRequest},
-	)
-	return err
-}
-
-// GetAllServiceRequests retrieves all service_test requests from MongoDB
-func (repo *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRequest, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	cursor, err := repo.collection.Find(ctx, bson.M{})
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
-
-	var requests []model.ServiceRequest
-	if err = cursor.All(ctx, &requests); err != nil {
-		return nil, err
-	}
-
-	return requests, nil
-}
-
-// SaveAllServiceRequests saves all service_test requests to the MongoDB collection (batch save)
-func (repo *ServiceRequestRepository) SaveAllServiceRequests(serviceRequests []model.ServiceRequest) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var operations []mongo.WriteModel
-	for _, request := range serviceRequests {
-		operation := mongo.NewUpdateOneModel().
-			SetFilter(bson.M{"ID": request.ID}).
-			SetUpdate(bson.M{"$set": request}).
-			SetUpsert(true)
-		operations = append(operations, operation)
-	}
-
-	_, err := repo.collection.BulkWrite(ctx, operations)
-	return err
-}
-func (r *ServiceRequestRepository) GetServiceRequestsByProviderID(providerID string) ([]model.ServiceRequest, error) {
-	// Define the MongoDB query filter
-	filter := bson.M{
-		"providerDetails.serviceProviderID": providerID,
-	}
-
-	// Prepare a slice to hold the results
-	var serviceRequests []model.ServiceRequest
-
-	// Perform the MongoDB find operation
-	cursor, err := r.collection.Find(context.Background(), filter)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve service requests: %v", err)
-	}
-	defer cursor.Close(context.Background())
-
-	// Iterate over the cursor and decode each document into the slice
-	for cursor.Next(context.Background()) {
+	for rows.Next() {
 		var request model.ServiceRequest
-		if err := cursor.Decode(&request); err != nil {
-			return nil, fmt.Errorf("could not decode service request: %v", err)
+		var requestedTime []uint8
+		var scheduledTime []uint8
+
+		// Using sql.NullString and sql.NullFloat64 for nullable columns
+		var providerID sql.NullString
+		var providerName sql.NullString
+		var providerContact sql.NullString
+		var providerAddress sql.NullString
+		var providerPrice sql.NullString
+		var providerRating sql.NullFloat64
+		var providerApprove sql.NullBool
+
+		// Scan the row data
+		err := rows.Scan(
+			&request.ID, &request.HouseholderID, &request.HouseholderName, &request.HouseholderAddress,
+			&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus,
+			&providerID, &providerName, &providerContact, &providerAddress, &providerPrice, &providerRating,
+			&providerApprove,
+		)
+		if err != nil {
+			return nil, err
 		}
-		serviceRequests = append(serviceRequests, request)
+
+		// Parse the requested and scheduled times
+		request.RequestedTime, err = util.ParseTime(requestedTime)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing requested_time: %v", err)
+		}
+
+		request.ScheduledTime, err = util.ParseTime(scheduledTime)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing scheduled_time: %v", err)
+		}
+
+		// Check if provider details are valid (non-NULL)
+		if providerID.Valid {
+			provider := model.ServiceProviderDetails{
+				ServiceProviderID: providerID.String,
+				Name:              providerName.String,
+				Contact:           providerContact.String,
+				Address:           providerAddress.String,
+				Price:             providerPrice.String,
+				Rating:            providerRating.Float64,
+				Approve:           providerApprove.Bool,
+			}
+			request.ProviderDetails = append(request.ProviderDetails, provider)
+		}
+
+		// Append the request to the slice
+		requests = append(requests, request)
 	}
 
-	// Check for any cursor errors
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating through service requests: %v", err)
+	// Check for errors during iteration
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
-	return serviceRequests, nil
+	return requests, nil
+}
+
+// UpdateServiceRequest updates an existing service request in MySQL
+func (repo *ServiceRequestRepository) UpdateServiceRequest(updatedRequest *model.ServiceRequest) error {
+	query := `
+		UPDATE service_requests 
+		SET householder_id = ?, householder_name = ?, householder_address = ?, service_id = ?, requested_time = ?, scheduled_time = ?, status = ?, approve_status = ? 
+		WHERE id = ?
+	`
+
+	_, err := repo.db.Exec(query, updatedRequest.HouseholderID, updatedRequest.HouseholderName, updatedRequest.HouseholderAddress, updatedRequest.ServiceID, updatedRequest.RequestedTime, updatedRequest.ScheduledTime, updatedRequest.Status, updatedRequest.ApproveStatus, updatedRequest.ID)
+	return err
+}
+
+// GetAllServiceRequests retrieves all service requests from MySQL
+func (repo *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRequest, error) {
+	query := `
+		SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status,
+		       spd.service_provider_id, spd.name, spd.contact, spd.address, spd.price, spd.rating, spd.approve
+		FROM service_requests AS sr
+		LEFT JOIN service_provider_details AS spd ON sr.id = spd.service_request_id
+	`
+
+	rows, err := repo.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var requests []model.ServiceRequest
+	for rows.Next() {
+		var requestedTime, scheduledTime []uint8
+		var request model.ServiceRequest
+		var provider model.ServiceProviderDetails
+
+		// Use sql.NullString and other nullable types for fields that may contain NULLs
+		var providerID, providerName, providerContact, providerAddress, providerPrice sql.NullString
+		var providerRating sql.NullFloat64
+		var providerApprove sql.NullBool
+
+		err := rows.Scan(
+			&request.ID, &request.HouseholderID, &request.HouseholderName, &request.HouseholderAddress,
+			&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus,
+			&providerID, &providerName, &providerContact, &providerAddress, &providerPrice,
+			&providerRating, &providerApprove,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse the requested_time
+		request.RequestedTime, err = util.ParseTime(requestedTime)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing requested_time: %v", err)
+		}
+
+		// Parse the scheduled_time
+		request.ScheduledTime, err = util.ParseTime(scheduledTime)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing scheduled_time: %v", err)
+		}
+
+		// Assign values to provider struct only if they are not NULL
+		if providerID.Valid {
+			provider.ServiceProviderID = providerID.String
+		}
+		if providerName.Valid {
+			provider.Name = providerName.String
+		}
+		if providerContact.Valid {
+			provider.Contact = providerContact.String
+		}
+		if providerAddress.Valid {
+			provider.Address = providerAddress.String
+		}
+		if providerPrice.Valid {
+			provider.Price = providerPrice.String
+		}
+		if providerRating.Valid {
+			provider.Rating = providerRating.Float64
+		}
+		if providerApprove.Valid {
+			provider.Approve = providerApprove.Bool
+		}
+
+		// Append provider details if a valid provider is found
+		if providerID.Valid {
+			request.ProviderDetails = append(request.ProviderDetails, provider)
+		}
+
+		requests = append(requests, request)
+	}
+
+	// Check for errors from iterating over rows
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return requests, nil
+}
+
+// GetServiceRequestsByProviderID retrieves service requests by the provider ID from MySQL
+func (repo *ServiceRequestRepository) GetServiceRequestsByProviderID(providerID string) ([]model.ServiceRequest, error) {
+	query := `
+	SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status 
+,spd.service_provider_id,spd.name,spd.contact,spd.address
+,spd.price,spd.rating,spd.approve FROM service_requests as sr inner join service_provider_details as spd  on sr.id=spd.service_request_id
+		WHERE spd.service_provider_id=?;
+	`
+
+	rows, err := repo.db.Query(query, providerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var requests []model.ServiceRequest
+	var requestedTime []uint8
+	var scheduledTime []uint8
+	for rows.Next() {
+		var request model.ServiceRequest
+		var provider model.ServiceProviderDetails
+		err := rows.Scan(
+			&request.ID, &request.HouseholderID, &request.HouseholderName, &request.HouseholderAddress,
+			&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus,
+			&provider.ServiceProviderID, &provider.Name, &provider.Contact, &provider.Address, &provider.Price,
+			&provider.Rating, &provider.Approve,
+		)
+		if err != nil {
+			return nil, err
+		}
+		// Parse the requested_time
+		request.RequestedTime, err = util.ParseTime(requestedTime)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing requested_time: %v", err)
+		}
+
+		// Parse the scheduled_time
+		request.ScheduledTime, err = util.ParseTime(scheduledTime)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing scheduled_time: %v", err)
+		}
+		request.ProviderDetails = append(request.ProviderDetails, provider)
+		requests = append(requests, request)
+	}
+
+	return requests, nil
+}
+
+func (repo *ServiceRequestRepository) GetServiceProviderByRequestID(requestID, providerID string) (*model.ServiceRequest, error) {
+	query := `SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status,
+	spd.service_provider_id, spd.name, spd.contact, spd.address, spd.price, spd.rating, spd.approve
+	FROM service_requests AS sr
+	INNER JOIN service_provider_details AS spd ON sr.id = spd.service_request_id
+	WHERE spd.service_provider_id = ? AND sr.id = ?`
+
+	rows, err := repo.db.Query(query, providerID, requestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Make sure to call Next() before scanning
+	if rows.Next() {
+		var request model.ServiceRequest
+		var requestedTime []uint8
+		var scheduledTime []uint8
+		var provider model.ServiceProviderDetails
+
+		// Scan the row data
+		err = rows.Scan(
+			&request.ID, &request.HouseholderID, &request.HouseholderName, &request.HouseholderAddress,
+			&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus,
+			&provider.ServiceProviderID, &provider.Name, &provider.Contact, &provider.Address, &provider.Price,
+			&provider.Rating, &provider.Approve,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse the requested_time
+		request.RequestedTime, err = util.ParseTime(requestedTime)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing requested_time: %v", err)
+		}
+
+		// Parse the scheduled_time
+		request.ScheduledTime, err = util.ParseTime(scheduledTime)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing scheduled_time: %v", err)
+		}
+
+		// Append the provider details
+		request.ProviderDetails = append(request.ProviderDetails, provider)
+
+		return &request, nil
+	}
+	// If no rows found, return an error
+	return nil, fmt.Errorf("no service request found for request ID: %s and provider ID: %s", requestID, providerID)
 }

@@ -50,7 +50,7 @@ func (mr *MockHouseholderRepositoryMockRecorder) GetHouseholderByID(id interface
 }
 
 // SaveHouseholder mocks base method.
-func (m *MockHouseholderRepository) SaveHouseholder(householder model.Householder) error {
+func (m *MockHouseholderRepository) SaveHouseholder(householder *model.Householder) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveHouseholder", householder)
 	ret0, _ := ret[0].(error)

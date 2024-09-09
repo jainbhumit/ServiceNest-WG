@@ -44,6 +44,6 @@ func (s *AdminService) DeactivateAccount(userID string) error {
 	return s.providerRepo.UpdateServiceProvider(provider)
 }
 
-func (s *AdminService) GetAllService() ([]*model.Service, error) {
+func (s *AdminService) GetAllService() ([]model.Service, error) {
 	return s.serviceRepo.GetAllServices()
 }
