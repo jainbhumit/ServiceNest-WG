@@ -465,3 +465,56 @@ func TestRemoveServiceByProviderID_Error(t *testing.T) {
 	assert.EqualError(t, err, "some database error")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
+func TestGetServiceByProviderIDAll(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewServiceRepository(db)
+
+	providerID := "provider123"
+
+	t.Run("Successful Query Execution", func(t *testing.T) {
+		rows := sqlmock.NewRows([]string{"id", "name", "description", "price", "provider_id", "category"}).
+			AddRow("1", "Service A", "Description A", 100.0, providerID, "Category A").
+			AddRow("2", "Service B", "Description B", 200.0, providerID, "Category B")
+
+		query := "SELECT id, name, description, price, provider_id, category FROM services WHERE provider_id = ?"
+		mock.ExpectQuery(query).
+			WithArgs(providerID).
+			WillReturnRows(rows)
+
+		services, err := repo.GetServiceByProviderID(providerID)
+
+		assert.NoError(t, err)
+		assert.Len(t, services, 2)
+		assert.Equal(t, "Service A", services[0].Name)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("Database Query Error", func(t *testing.T) {
+		query := "SELECT id, name, description, price, provider_id, category FROM services WHERE provider_id = ?"
+		mock.ExpectQuery(query).
+			WithArgs(providerID).
+			WillReturnError(errors.New("query error"))
+
+		services, err := repo.GetServiceByProviderID(providerID)
+
+		assert.Error(t, err)
+		assert.Nil(t, services)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("No Rows Returned", func(t *testing.T) {
+		query := "SELECT id, name, description, price, provider_id, category FROM services WHERE provider_id = ?"
+		mock.ExpectQuery(query).
+			WithArgs(providerID).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "price", "provider_id", "category"}))
+
+		services, err := repo.GetServiceByProviderID(providerID)
+
+		assert.NoError(t, err)
+		assert.Nil(t, services)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}

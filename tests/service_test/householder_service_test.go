@@ -898,3 +898,66 @@ func TestRequestService_ALL(t *testing.T) {
 		})
 	}
 }
+
+func TestCancelAcceptedRequestAll(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHouseholderRepo := mocks.NewMockHouseholderRepository(ctrl)
+	mockProviderRepo := mocks.NewMockServiceProviderRepository(ctrl)
+	mockServiceRepo := mocks.NewMockServiceRepository(ctrl)
+	mockServiceRequestRepo := mocks.NewMockServiceRequestRepository(ctrl)
+
+	service := service.NewHouseholderService(mockHouseholderRepo, mockProviderRepo, mockServiceRepo, mockServiceRequestRepo)
+
+	requestID := "request1"
+	householderID := "householder1"
+	serviceRequest := &model.ServiceRequest{ // Pointer type here
+		ID:            requestID,
+		HouseholderID: &householderID,
+		Status:        "Accepted",
+	}
+
+	t.Run("Successful Cancellation", func(t *testing.T) {
+		// Set up the mock expectations
+		mockServiceRequestRepo.EXPECT().
+			GetServiceRequestByID(requestID).
+			Return(serviceRequest, nil) // Return pointer to serviceRequest
+
+		mockServiceRequestRepo.EXPECT().
+			UpdateServiceRequest(gomock.Any()).             // Accept any pointer argument here
+			Do(func(updatedRequest *model.ServiceRequest) { // Expect pointer type
+				assert.Equal(t, "Cancelled", updatedRequest.Status)
+				assert.Equal(t, requestID, updatedRequest.ID)
+				assert.Equal(t, householderID, *updatedRequest.HouseholderID)
+			}).
+			Return(nil)
+
+		err := service.CancelAcceptedRequest(requestID, householderID)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Error Fetching Service Request", func(t *testing.T) {
+		mockServiceRequestRepo.EXPECT().
+			GetServiceRequestByID(requestID).
+			Return(nil, errors.New("fetch error"))
+
+		err := service.CancelAcceptedRequest(requestID, householderID)
+		assert.Error(t, err)
+		assert.Equal(t, "fetch error", err.Error())
+	})
+
+	t.Run("Service Request Does Not Belong to Householder", func(t *testing.T) {
+		invalidHouseholderID := "differentHouseholder"
+		serviceRequest.HouseholderID = &invalidHouseholderID
+
+		mockServiceRequestRepo.EXPECT().
+			GetServiceRequestByID(requestID).
+			Return(serviceRequest, nil)
+
+		err := service.CancelAcceptedRequest(requestID, householderID)
+		assert.Error(t, err)
+		assert.Equal(t, "service request does not belong to the householder", err.Error())
+	})
+
+}

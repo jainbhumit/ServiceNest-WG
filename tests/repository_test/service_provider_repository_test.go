@@ -650,3 +650,71 @@ func TestGetProviderDetailByID_QueryError(t *testing.T) {
 	assert.EqualError(t, err, "query error")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
+func TestAddReviewAll(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewServiceProviderRepository(db)
+
+	review := model.Review{
+		ID:            "review123",
+		ProviderID:    "provider123",
+		ServiceID:     "service123",
+		HouseholderID: "householder123",
+		Rating:        4,
+		Comments:      "Great service",
+		ReviewDate:    time.Now(),
+	}
+
+	t.Run("Successful Review Addition", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec("INSERT INTO reviews").
+			WithArgs(review.ID, review.ProviderID, review.ServiceID, review.HouseholderID, review.Rating, review.Comments, sqlmock.AnyArg()).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+
+		err = repo.AddReview(review)
+
+		assert.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("Transaction Begin Error", func(t *testing.T) {
+		mock.ExpectBegin().WillReturnError(errors.New("begin error"))
+
+		err = repo.AddReview(review)
+
+		assert.Error(t, err)
+		assert.Equal(t, "begin error", err.Error())
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("SQL Execution Error", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec("INSERT INTO reviews").
+			WithArgs(review.ID, review.ProviderID, review.ServiceID, review.HouseholderID, review.Rating, review.Comments, sqlmock.AnyArg()).
+			WillReturnError(errors.New("execution error"))
+		mock.ExpectRollback()
+
+		err = repo.AddReview(review)
+
+		assert.Error(t, err)
+		assert.Equal(t, "execution error", err.Error())
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("Transaction Commit Error", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec("INSERT INTO reviews").
+			WithArgs(review.ID, review.ProviderID, review.ServiceID, review.HouseholderID, review.Rating, review.Comments, sqlmock.AnyArg()).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit().WillReturnError(errors.New("commit error"))
+
+		err = repo.AddReview(review)
+
+		assert.Error(t, err)
+		assert.Equal(t, "commit error", err.Error())
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}

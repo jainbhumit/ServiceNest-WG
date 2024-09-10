@@ -3,6 +3,7 @@ package service_test
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -572,4 +573,194 @@ func TestGetServiceRequestByID(t *testing.T) {
 			assert.Equal(t, tt.expectedError, err)
 		})
 	}
+}
+func TestAcceptServiceRequestEdgeCases(t *testing.T) {
+	tests := []struct {
+		name                               string
+		mockInput                          string
+		mockServiceRequest                 *model.ServiceRequest
+		mockProviderDetails                *model.ServiceProviderDetails
+		mockGetServiceRequestByIDError     error
+		mockGetProviderDetailByIDError     error
+		mockGetReviewsByProviderIDError    error
+		mockUpdateServiceRequestError      error
+		mockSaveServiceProviderDetailError error
+		expectedError                      string
+	}{
+		{
+			name:                               "Error Saving Service Provider Details",
+			mockInput:                          "150\n",
+			mockServiceRequest:                 &model.ServiceRequest{ID: "request-456", Status: "Pending", ApproveStatus: false},
+			mockProviderDetails:                &model.ServiceProviderDetails{ServiceProviderID: "provider-123"},
+			mockGetServiceRequestByIDError:     nil,
+			mockGetProviderDetailByIDError:     nil,
+			mockGetReviewsByProviderIDError:    nil,
+			mockUpdateServiceRequestError:      nil,
+			mockSaveServiceProviderDetailError: fmt.Errorf("error saving service provider details"),
+			expectedError:                      "error saving service provider details",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a pipe to simulate stdin
+			r, w, err := os.Pipe()
+			if err != nil {
+				t.Fatalf("Failed to create pipe: %v", err)
+			}
+
+			// Save the original stdin
+			oldStdin := os.Stdin
+			defer func() {
+				os.Stdin = oldStdin
+			}()
+
+			// Set os.Stdin to read from the pipe (our simulated input)
+			os.Stdin = r
+
+			// Write the input to the pipe
+			_, err = w.Write([]byte(tt.mockInput))
+			if err != nil {
+				t.Fatalf("Failed to write to pipe: %v", err)
+			}
+			// Close the writer to simulate end of input
+			w.Close()
+
+			// Set up mocks and other test structures
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockServiceRequestRepo := mocks.NewMockServiceRequestRepository(ctrl)
+			mockServiceProviderRepo := mocks.NewMockServiceProviderRepository(ctrl)
+
+			providerID := "provider-123"
+			requestID := "request-456"
+
+			mockServiceRequestRepo.EXPECT().GetServiceRequestByID(requestID).Return(tt.mockServiceRequest, tt.mockGetServiceRequestByIDError)
+			mockServiceProviderRepo.EXPECT().GetProviderDetailByID(providerID).Return(tt.mockProviderDetails, tt.mockGetProviderDetailByIDError)
+			mockServiceProviderRepo.EXPECT().GetReviewsByProviderID(providerID).Return([]model.Review{}, tt.mockGetReviewsByProviderIDError)
+			mockServiceRequestRepo.EXPECT().UpdateServiceRequest(tt.mockServiceRequest).Return(tt.mockUpdateServiceRequestError)
+			mockServiceProviderRepo.EXPECT().SaveServiceProviderDetail(tt.mockProviderDetails, requestID).Return(tt.mockSaveServiceProviderDetailError)
+
+			// Initialize the service with mock repositories
+			svc := service.NewServiceProviderService(mockServiceProviderRepo, mockServiceRequestRepo, nil)
+
+			// Call the method
+			err = svc.AcceptServiceRequest(providerID, requestID)
+
+			// Check for errors
+			if err != nil {
+				assert.EqualError(t, err, tt.expectedError)
+			} else if tt.expectedError != "" {
+				t.Fatalf("expected error %v, got nil", tt.expectedError)
+			}
+
+			if tt.mockServiceRequest != nil && tt.expectedError == "" {
+				assert.Equal(t, "Accepted", tt.mockServiceRequest.Status, "expected service request status to be 'Accepted'")
+				assert.Equal(t, providerID, tt.mockServiceRequest.ProviderDetails[0].ServiceProviderID, "expected provider ID to be set correctly")
+				assert.Equal(t, "150", tt.mockServiceRequest.ProviderDetails[0].Price, "expected price to be '150'")
+			}
+		})
+	}
+}
+func TestRemoveServiceAll(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockServiceRepo := mocks.NewMockServiceRepository(ctrl)
+
+	providerID := "provider-123"
+	serviceID := "service-456"
+
+	t.Run("Successful Removal", func(t *testing.T) {
+		// Expect RemoveServiceByProviderID to return no error
+		mockServiceRepo.EXPECT().RemoveServiceByProviderID(providerID, serviceID).Return(nil)
+
+		svc := service.NewServiceProviderService(nil, nil, mockServiceRepo)
+
+		err := svc.RemoveService(providerID, serviceID)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Error from RemoveServiceByProviderID", func(t *testing.T) {
+		// Expect RemoveServiceByProviderID to return an error
+		expectedErr := errors.New("remove service error")
+		mockServiceRepo.EXPECT().RemoveServiceByProviderID(providerID, serviceID).Return(expectedErr)
+
+		svc := service.NewServiceProviderService(nil, nil, mockServiceRepo)
+
+		err := svc.RemoveService(providerID, serviceID)
+		assert.Error(t, err)
+		assert.Equal(t, expectedErr, err)
+	})
+}
+
+func TestDeclineServiceRequestAll(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockServiceRequestRepo := mocks.NewMockServiceRequestRepository(ctrl)
+
+	providerID := "provider-123"
+	requestID := "request-456"
+
+	t.Run("Successful Decline", func(t *testing.T) {
+		mockServiceRequest := &model.ServiceRequest{
+			ID:     requestID,
+			Status: "Pending",
+		}
+
+		// Mock expectations
+		mockServiceRequestRepo.EXPECT().GetServiceRequestByID(requestID).Return(mockServiceRequest, nil)
+		mockServiceRequestRepo.EXPECT().UpdateServiceRequest(gomock.Any()).Do(func(updatedRequest *model.ServiceRequest) {
+			assert.Equal(t, "Declined", updatedRequest.Status)
+			assert.Equal(t, requestID, updatedRequest.ID)
+		}).Return(nil)
+
+		svc := service.NewServiceProviderService(nil, mockServiceRequestRepo, nil)
+
+		err := svc.DeclineServiceRequest(providerID, requestID)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Error Fetching Service Request", func(t *testing.T) {
+		mockServiceRequestRepo.EXPECT().GetServiceRequestByID(requestID).Return(nil, errors.New("fetch error"))
+
+		svc := service.NewServiceProviderService(nil, mockServiceRequestRepo, nil)
+
+		err := svc.DeclineServiceRequest(providerID, requestID)
+		assert.Error(t, err)
+		assert.Equal(t, "fetch error", err.Error())
+	})
+
+	t.Run("Service Request Status Not Pending", func(t *testing.T) {
+		mockServiceRequest := &model.ServiceRequest{
+			ID:     requestID,
+			Status: "Accepted", // Status is not "Pending"
+		}
+
+		mockServiceRequestRepo.EXPECT().GetServiceRequestByID(requestID).Return(mockServiceRequest, nil)
+
+		svc := service.NewServiceProviderService(nil, mockServiceRequestRepo, nil)
+
+		err := svc.DeclineServiceRequest(providerID, requestID)
+		assert.Error(t, err)
+		assert.Equal(t, "service request is not pending", err.Error())
+	})
+
+	t.Run("Error Updating Service Request", func(t *testing.T) {
+		mockServiceRequest := &model.ServiceRequest{
+			ID:     requestID,
+			Status: "Pending",
+		}
+
+		mockServiceRequestRepo.EXPECT().GetServiceRequestByID(requestID).Return(mockServiceRequest, nil)
+		mockServiceRequestRepo.EXPECT().UpdateServiceRequest(gomock.Any()).Return(errors.New("update error"))
+
+		svc := service.NewServiceProviderService(nil, mockServiceRequestRepo, nil)
+
+		err := svc.DeclineServiceRequest(providerID, requestID)
+		assert.Error(t, err)
+		assert.Equal(t, "update error", err.Error())
+	})
 }
