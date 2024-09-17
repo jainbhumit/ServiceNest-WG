@@ -21,8 +21,11 @@ func main() {
 }
 
 func runApp() error {
-	// Initialize MongoDB Connection
-	client := config.GetMySQLDB()
+
+	client, err := config.GetMySQLDB()
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer func() {
 		client.Close()
 	}()

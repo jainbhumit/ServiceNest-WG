@@ -229,7 +229,7 @@ func (s *HouseholderService) AddReview(providerID, householderID, serviceID, com
 	// Create the review object
 	review := model.Review{
 		ID:            GetUniqueID(),
-		ProviderID:    providerID, // Include providerID
+		ProviderID:    providerID,
 		ServiceID:     serviceID,
 		HouseholderID: householderID,
 		Rating:        rating,

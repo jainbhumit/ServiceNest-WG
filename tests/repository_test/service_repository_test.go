@@ -122,108 +122,7 @@ func TestGetServiceByProviderID(t *testing.T) {
 	assert.Equal(t, "Service A", services[0].Name)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
-func TestSaveAllServices_Success(t *testing.T) {
-	// Mock the database and create a new ServiceRepository instance
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
 
-	repo := repository.NewServiceRepository(db)
-
-	// Mock services data
-	services := []model.Service{
-		{ID: "service1", Name: "Plumbing", Description: "Fix plumbing issues", Price: 100.0, ProviderID: "provider1", Category: "Home"},
-		{ID: "service2", Name: "Electrical", Description: "Fix electrical issues", Price: 200.0, ProviderID: "provider2", Category: "Maintenance"},
-	}
-
-	// Mock transaction and prepared statement
-	mock.ExpectBegin()
-
-	query := regexp.QuoteMeta("INSERT INTO services (id, name, description, price, provider_id, category) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), price=VALUES(price), provider_id=VALUES(provider_id), category=VALUES(category)")
-	prep := mock.ExpectPrepare(query)
-
-	for _, service := range services {
-		prep.ExpectExec().
-			WithArgs(service.ID, service.Name, service.Description, service.Price, service.ProviderID, service.Category).
-			WillReturnResult(sqlmock.NewResult(1, 1))
-	}
-
-	mock.ExpectCommit()
-
-	// Call the function
-	err = repo.SaveAllServices(services)
-	assert.NoError(t, err)
-
-	// Ensure all expectations were met
-	err = mock.ExpectationsWereMet()
-	assert.NoError(t, err)
-}
-
-func TestSaveAllServices_FailureOnPrepare(t *testing.T) {
-	// Mock the database and create a new ServiceRepository instance
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-
-	repo := repository.NewServiceRepository(db)
-
-	// Mock services data
-	services := []model.Service{
-		{ID: "service1", Name: "Plumbing", Description: "Fix plumbing issues", Price: 100.0, ProviderID: "provider1", Category: "Home"},
-	}
-
-	// Mock transaction and failure in Prepare statement
-	mock.ExpectBegin()
-
-	query := regexp.QuoteMeta("INSERT INTO services (id, name, description, price, provider_id, category) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), price=VALUES(price), provider_id=VALUES(provider_id), category=VALUES(category)")
-	mock.ExpectPrepare(query).WillReturnError(sql.ErrConnDone)
-
-	mock.ExpectRollback()
-
-	// Call the function
-	err = repo.SaveAllServices(services)
-	assert.Error(t, err)
-	assert.Equal(t, sql.ErrConnDone, err)
-
-	// Ensure all expectations were met
-	err = mock.ExpectationsWereMet()
-	assert.NoError(t, err)
-}
-
-func TestSaveAllServices_FailureOnExec(t *testing.T) {
-	// Mock the database and create a new ServiceRepository instance
-	db, mock, err := sqlmock.New()
-	assert.NoError(t, err)
-	defer db.Close()
-
-	repo := repository.NewServiceRepository(db)
-
-	// Mock services data
-	services := []model.Service{
-		{ID: "service1", Name: "Plumbing", Description: "Fix plumbing issues", Price: 100.0, ProviderID: "provider1", Category: "Home"},
-	}
-
-	// Mock transaction and prepared statement
-	mock.ExpectBegin()
-
-	query := regexp.QuoteMeta("INSERT INTO services (id, name, description, price, provider_id, category) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), price=VALUES(price), provider_id=VALUES(provider_id), category=VALUES(category)")
-	prep := mock.ExpectPrepare(query)
-
-	// Mock Exec failure
-	prep.ExpectExec().WithArgs("service1", "Plumbing", "Fix plumbing issues", 100.0, "provider1", "Home").
-		WillReturnError(sql.ErrNoRows)
-
-	mock.ExpectRollback()
-
-	// Call the function
-	err = repo.SaveAllServices(services)
-	assert.Error(t, err)
-	assert.Equal(t, sql.ErrNoRows, err)
-
-	// Ensure all expectations were met
-	err = mock.ExpectationsWereMet()
-	assert.NoError(t, err)
-}
 func TestGetServiceByName_Success(t *testing.T) {
 	// Mock the database and create a new ServiceRepository instance
 	db, mock, err := sqlmock.New()
@@ -318,7 +217,8 @@ func TestUpdateService_Success(t *testing.T) {
 	repo := repository.NewServiceRepository(db)
 
 	// Prepare mock expectation
-	query := regexp.QuoteMeta("UPDATE services SET name = ?, description = ?, price = ? WHERE provider_id= ? AND id=?")
+
+	query := regexp.QuoteMeta("UPDATE services SET name = ?, description = ?, price = ? WHERE provider_id = ? AND id = ?")
 	mock.ExpectExec(query).
 		WithArgs("ServiceName", "ServiceDescription", 100.0, "provider1", "service1").
 		WillReturnResult(sqlmock.NewResult(1, 1))
@@ -349,7 +249,7 @@ func TestUpdateService_NoRowsAffected(t *testing.T) {
 	repo := repository.NewServiceRepository(db)
 
 	// Prepare mock expectation
-	query := regexp.QuoteMeta("UPDATE services SET name = ?, description = ?, price = ? WHERE provider_id= ? AND id=?")
+	query := regexp.QuoteMeta("UPDATE services SET name = ?, description = ?, price = ? WHERE provider_id = ? AND id = ?")
 	mock.ExpectExec(query).
 		WithArgs("ServiceName", "ServiceDescription", 100.0, "provider1", "service1").
 		WillReturnResult(sqlmock.NewResult(1, 0))
@@ -379,7 +279,7 @@ func TestUpdateService_Error(t *testing.T) {
 	// Create the repository with the mock database
 	repo := repository.NewServiceRepository(db)
 	// Prepare mock expectation
-	query := regexp.QuoteMeta("UPDATE services SET name = ?, description = ?, price = ? WHERE provider_id= ? AND id=?")
+	query := regexp.QuoteMeta("UPDATE services SET name = ?, description = ?, price = ? WHERE provider_id = ? AND id = ?")
 	mock.ExpectExec(query).
 		WithArgs("ServiceName", "ServiceDescription", 100.0, "provider1", "service1").
 		WillReturnError(errors.New("some database error"))

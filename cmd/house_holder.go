@@ -167,20 +167,7 @@ func viewServices(householderService *service.HouseholderService) {
 // SearchService allows the householder to search for available service_test providers
 func searchService(householderService *service.HouseholderService, householder *model.Householder) {
 	util.DisplayCategory()
-	//var serviceType string
-	//fmt.Print("Enter the type of service_test you're looking for: ")
-	//fmt.Scanln(&serviceType)
-	//
-	//providers, err := householderService.SearchService(householder, serviceType)
-	//if err != nil {
-	//	color.Red("Error searching for service_test: %v", err)
-	//	return
-	//}
-	//
-	//color.Cyan("Found %d providers for %s:", len(providers), serviceType)
-	//for _, provider := range providers {
-	//	color.Cyan("- %s (%s)", provider.Name, provider.Contact)
-	//}
+
 	var category string
 	fmt.Print("Enter the category of services you're looking for: ")
 	fmt.Scanln(&category)
