@@ -7,6 +7,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
+	"log"
 	"os"
 	"serviceNest/interfaces"
 	"serviceNest/model"
@@ -35,9 +36,12 @@ func SignUp(userRepo interfaces.UserRepository) (*model.User, error) {
 	}
 
 	password, err := getPassword("Enter Password: ")
+
 	if err != nil {
+
 		return nil, err
 	}
+
 	var role string
 	for {
 		fmt.Print(`Enter Role 
@@ -122,6 +126,7 @@ func getValidEmail(userRepo interfaces.UserRepository) (string, error) {
 }
 
 func getPassword(prompt string) (string, error) {
+	cnt := 0
 	for {
 		fmt.Print(prompt)
 		password, err := terminal.ReadPassword(int(os.Stdin.Fd()))
@@ -131,9 +136,14 @@ func getPassword(prompt string) (string, error) {
 		passwordStr := strings.TrimSpace(string(password))
 		if err := util.ValidatePassword(passwordStr); err != nil {
 			color.Red("%s", err)
+			cnt++
+			if cnt >= 3 {
+				log.Fatal("Multiple time wrong password")
+			}
 			continue
 		}
 		return passwordStr, nil
+
 	}
 }
 

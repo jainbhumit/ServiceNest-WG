@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"serviceNest/config"
 	"serviceNest/interfaces"
 	"serviceNest/model"
 	"serviceNest/util"
@@ -20,11 +21,13 @@ func NewServiceRequestRepository(db *sql.DB) interfaces.ServiceRequestRepository
 
 // SaveServiceRequest saves a service request to the MySQL database
 func (repo *ServiceRequestRepository) SaveServiceRequest(request model.ServiceRequest) error {
-	query := `
-		INSERT INTO service_requests 
-		(id, householder_id, householder_name, householder_address, service_id, requested_time, scheduled_time, status, approve_status) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
+	column := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
+	query := config.InsertQuery("service_requests", column)
+	//query := `
+	//	INSERT INTO service_requests
+	//	(id, householder_id, householder_name, householder_address, service_id, requested_time, scheduled_time, status, approve_status)
+	//	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	//`
 
 	_, err := repo.db.Exec(query, request.ID, request.HouseholderID, request.HouseholderName, request.HouseholderAddress, request.ServiceID, request.RequestedTime, request.ScheduledTime, request.Status, request.ApproveStatus)
 	return err
@@ -32,13 +35,17 @@ func (repo *ServiceRequestRepository) SaveServiceRequest(request model.ServiceRe
 
 // GetServiceRequestByID retrieves a service request by its ID from MySQL
 func (repo *ServiceRequestRepository) GetServiceRequestByID(requestID string) (*model.ServiceRequest, error) {
-	query := `
-		SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, 
-		       s.name as service_name, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status 
-		FROM service_requests sr
-		INNER JOIN services s ON sr.service_id = s.id
-		WHERE sr.id = ?
-	`
+	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
+	secondTableColumn := []string{"name"}
+	query := config.SelectInnerJoinQuery("service_requests", "services", "service_requests.service_id = services.id", "service_requests.id", firstTableColumn, secondTableColumn)
+
+	//query := `
+	//	SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id,
+	//	       sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status ,s.name as service_name,
+	//	FROM service_requests sr
+	//	INNER JOIN services s ON sr.service_id = s.id
+	//	WHERE sr.id = ?
+	//`
 
 	var request model.ServiceRequest
 	var requestedTime []uint8
@@ -47,7 +54,7 @@ func (repo *ServiceRequestRepository) GetServiceRequestByID(requestID string) (*
 	// Execute the query
 	err := repo.db.QueryRow(query, requestID).Scan(
 		&request.ID, &request.HouseholderID, &request.HouseholderName, &request.HouseholderAddress,
-		&request.ServiceID, &request.ServiceName, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus,
+		&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus, &request.ServiceName,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -71,14 +78,18 @@ func (repo *ServiceRequestRepository) GetServiceRequestByID(requestID string) (*
 }
 
 func (repo *ServiceRequestRepository) GetServiceRequestsByHouseholderID(householderID string) ([]model.ServiceRequest, error) {
-	query := `
-		SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, 
-		       sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status, spd.service_provider_id, spd.name,
-		       spd.contact, spd.address, spd.price, spd.rating, spd.approve
-		FROM service_requests AS sr 
-		LEFT JOIN service_provider_details AS spd ON sr.id = spd.service_request_id
-		WHERE householder_id = ?
-	`
+	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
+	secondTableColumn := []string{"service_provider_id", "name", "contact", "address", "price", "rating", "approve"}
+	query := config.SelectLeftJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "service_requests.householder_id", firstTableColumn, secondTableColumn)
+
+	//query := `
+	//	SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id,
+	//	       sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status, spd.service_provider_id, spd.name,
+	//	       spd.contact, spd.address, spd.price, spd.rating, spd.approve
+	//	FROM service_requests AS sr
+	//	LEFT JOIN service_provider_details AS spd ON sr.id = spd.service_request_id
+	//	WHERE householder_id = ?
+	//`
 
 	rows, err := repo.db.Query(query, householderID)
 	if err != nil {
@@ -163,12 +174,16 @@ func (repo *ServiceRequestRepository) UpdateServiceRequest(updatedRequest *model
 
 // GetAllServiceRequests retrieves all service requests from MySQL
 func (repo *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRequest, error) {
-	query := `
-		SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status,
-		       spd.service_provider_id, spd.name, spd.contact, spd.address, spd.price, spd.rating, spd.approve
-		FROM service_requests AS sr
-		LEFT JOIN service_provider_details AS spd ON sr.id = spd.service_request_id
-	`
+	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
+	secondTableColumn := []string{"service_provider_id", "name", "contact", "address", "price", "rating", "approve"}
+	query := config.SelectLeftJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "", firstTableColumn, secondTableColumn)
+
+	//query := `
+	//	SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status,
+	//	       spd.service_provider_id, spd.name, spd.contact, spd.address, spd.price, spd.rating, spd.approve
+	//	FROM service_requests AS sr
+	//	LEFT JOIN service_provider_details AS spd ON sr.id = spd.service_request_id
+	//`
 
 	rows, err := repo.db.Query(query)
 	if err != nil {
@@ -250,12 +265,16 @@ func (repo *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRe
 
 // GetServiceRequestsByProviderID retrieves service requests by the provider ID from MySQL
 func (repo *ServiceRequestRepository) GetServiceRequestsByProviderID(providerID string) ([]model.ServiceRequest, error) {
-	query := `
-	SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status 
-,spd.service_provider_id,spd.name,spd.contact,spd.address
-,spd.price,spd.rating,spd.approve FROM service_requests as sr inner join service_provider_details as spd  on sr.id=spd.service_request_id
-		WHERE spd.service_provider_id=?;
-	`
+	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
+	secondTableColumn := []string{"service_provider_id", "name", "contact", "address", "price", "rating", "approve"}
+	query := config.SelectInnerJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "service_provider_details.service_provider_id", firstTableColumn, secondTableColumn)
+
+	//	query := `
+	//	SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status
+	//,spd.service_provider_id,spd.name,spd.contact,spd.address
+	//,spd.price,spd.rating,spd.approve FROM service_requests as sr inner join service_provider_details as spd  on sr.id=spd.service_request_id
+	//		WHERE spd.service_provider_id=?;
+	//	`
 
 	rows, err := repo.db.Query(query, providerID)
 	if err != nil {
@@ -297,11 +316,15 @@ func (repo *ServiceRequestRepository) GetServiceRequestsByProviderID(providerID 
 }
 
 func (repo *ServiceRequestRepository) GetServiceProviderByRequestID(requestID, providerID string) (*model.ServiceRequest, error) {
-	query := `SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status,
-	spd.service_provider_id, spd.name, spd.contact, spd.address, spd.price, spd.rating, spd.approve
-	FROM service_requests AS sr
-	INNER JOIN service_provider_details AS spd ON sr.id = spd.service_request_id
-	WHERE spd.service_provider_id = ? AND sr.id = ?`
+	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
+	secondTableColumn := []string{"service_provider_id", "name", "contact", "address", "price", "rating", "approve"}
+	query := config.SelectInnerJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "service_provider_details.service_provider_id = ? AND service_requests", firstTableColumn, secondTableColumn)
+
+	//query := `SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status,
+	//spd.service_provider_id, spd.name, spd.contact, spd.address, spd.price, spd.rating, spd.approve
+	//FROM service_requests AS sr
+	//INNER JOIN service_provider_details AS spd ON sr.id = spd.service_request_id
+	//WHERE spd.service_provider_id = ? AND sr.id = ?`
 
 	rows, err := repo.db.Query(query, providerID, requestID)
 	if err != nil {

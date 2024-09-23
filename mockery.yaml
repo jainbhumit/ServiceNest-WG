@@ -1,6 +1,0 @@
-# mockery.yaml
-version: 2
-packages:
-  - name: "interfaces"
-    output: "mocks"
-    all: true

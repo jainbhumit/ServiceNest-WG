@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	"serviceNest/config"
 	"serviceNest/interfaces"
 	"serviceNest/model"
 )
@@ -18,7 +19,9 @@ func NewServiceRepository(client *sql.DB) interfaces.ServiceRepository {
 }
 
 func (repo *ServiceRepository) GetAllServices() ([]model.Service, error) {
-	query := "SELECT id, name, description, price, provider_id, category FROM services"
+	column := []string{"id", "name", "description", "price", "provider_id", "category"}
+	query := config.SelectQuery("services", "", "", column)
+	//query := "SELECT id, name, description, price, provider_id, category FROM services"
 	rows, err := repo.db.Query(query)
 	if err != nil {
 		return nil, err
@@ -52,7 +55,9 @@ func (repo *ServiceRepository) GetAllServices() ([]model.Service, error) {
 
 // GetServiceByID retrieves a service by its ID
 func (repo *ServiceRepository) GetServiceByID(serviceID string) (*model.Service, error) {
-	query := "SELECT id, name, description, price, provider_id, category FROM services WHERE id = ?"
+	column := []string{"id", "name", "description", "price", "provider_id", "category"}
+	query := config.SelectQuery("services", "id", "", column)
+	//query := "SELECT id, name, description, price, provider_id, category FROM services WHERE id = ?"
 	var service model.Service
 	err := repo.db.QueryRow(query, serviceID).Scan(&service.ID, &service.Name, &service.Description, &service.Price, &service.ProviderID, &service.Category)
 	if err != nil {
@@ -67,7 +72,9 @@ func (repo *ServiceRepository) GetServiceByID(serviceID string) (*model.Service,
 
 // SaveService adds a new service to the MySQL database
 func (repo *ServiceRepository) SaveService(service model.Service) error {
-	query := "INSERT INTO services (id, name, description, price, provider_id, category) VALUES (?, ?, ?, ?, ?, ?)"
+	column := []string{"id", "name", "description", "price", "provider_id", "category"}
+	query := config.InsertQuery("services", column)
+	//query := "INSERT INTO services (id, name, description, price, provider_id, category) VALUES (?, ?, ?, ?, ?, ?)"
 	var providerID *string
 	if service.ProviderID == "" {
 		providerID = nil
@@ -78,38 +85,18 @@ func (repo *ServiceRepository) SaveService(service model.Service) error {
 	return err
 }
 
-// SaveAllServices saves the entire list of services to the MySQL database
-func (repo *ServiceRepository) SaveAllServices(services []model.Service) error {
-	tx, err := repo.db.Begin()
-	if err != nil {
-		return err
-	}
-
-	stmt, err := tx.Prepare("INSERT INTO services (id, name, description, price, provider_id, category) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), price=VALUES(price), provider_id=VALUES(provider_id), category=VALUES(category)")
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	defer stmt.Close()
-
-	for _, service := range services {
-		if _, err := stmt.Exec(service.ID, service.Name, service.Description, service.Price, service.ProviderID, service.Category); err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	return tx.Commit()
-}
-
 // RemoveService removes a service from the MySQL database
 func (repo *ServiceRepository) RemoveService(serviceID string) error {
-	query := "DELETE FROM services WHERE id = ?"
+	query := config.DeleteQuery("services", "id", "")
+
+	//query := "DELETE FROM services WHERE id = ?"
 	_, err := repo.db.Exec(query, serviceID)
 	return err
 }
 func (repo *ServiceRepository) GetServiceByName(serviceName string) (*model.Service, error) {
-	query := "SELECT id, name, description, price, provider_id, category FROM services WHERE name = ?"
+	column := []string{"id", "name", "description", "price", "provider_id", "category"}
+	query := config.SelectQuery("services", "name", "", column)
+	//query := "SELECT id, name, description, price, provider_id, category FROM services WHERE name = ?"
 	var service model.Service
 	err := repo.db.QueryRow(query, serviceName).Scan(&service.ID, &service.Name, &service.Description, &service.Price, &service.ProviderID, &service.Category)
 	if err != nil {
@@ -123,7 +110,9 @@ func (repo *ServiceRepository) GetServiceByName(serviceName string) (*model.Serv
 
 // GetServiceByProviderID retrieves a service by its ProviderID
 func (repo *ServiceRepository) GetServiceByProviderID(providerID string) ([]model.Service, error) {
-	query := "SELECT id, name, description, price, provider_id, category FROM services WHERE provider_id = ?"
+	column := []string{"id", "name", "description", "price", "provider_id", "category"}
+	query := config.SelectQuery("services", "provider_id", "", column)
+	//query := "SELECT id, name, description, price, provider_id, category FROM services WHERE provider_id = ?"
 	rows, err := repo.db.Query(query, providerID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -146,7 +135,9 @@ func (repo *ServiceRepository) GetServiceByProviderID(providerID string) ([]mode
 }
 
 func (repo *ServiceRepository) UpdateService(providerID string, updatedService model.Service) error {
-	query := "UPDATE services SET name = ?, description = ?, price = ? WHERE provider_id= ? AND id=?;"
+	column := []string{"name", "description", "price"}
+	query := config.UpdateQuery("services", "provider_id", "id", column)
+	//query := "UPDATE services SET name = ?, description = ?, price = ? WHERE provider_id= ? AND id=?;"
 	result, err := repo.db.Exec(query, updatedService.Name, updatedService.Description, updatedService.Price, providerID, updatedService.ID)
 	// Check how many rows were affected
 	if err != nil {
@@ -165,7 +156,8 @@ func (repo *ServiceRepository) UpdateService(providerID string, updatedService m
 }
 
 func (repo *ServiceRepository) RemoveServiceByProviderID(providerID string, serviceID string) error {
-	query := "DELETE FROM services WHERE id = ? AND provider_id = ?"
+	query := config.DeleteQuery("services", "id", "provider_id")
+	//query := "DELETE FROM services WHERE id = ? AND provider_id = ?"
 	result, err := repo.db.Exec(query, serviceID, providerID)
 	if err != nil {
 		return err

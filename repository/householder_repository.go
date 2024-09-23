@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"serviceNest/config"
 	"serviceNest/interfaces"
 	"serviceNest/model"
 )
@@ -18,13 +19,17 @@ func NewHouseholderRepository(client *sql.DB) interfaces.HouseholderRepository {
 }
 
 func (repo *MySQLHouseholderRepository) SaveHouseholder(householder *model.Householder) error {
-	query := "INSERT INTO users (id, name, email, password, role, address, contact, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	column := []string{"id", "name", "email", "password", "role", "address", "contact", "latitude", "longitude"}
+	query := config.InsertQuery("users", column)
+	//query := "INSERT INTO users (id, name, email, password, role, address, contact, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
 	_, err := repo.db.Exec(query, householder.ID, householder.Name, householder.Email, householder.Password, householder.Role, householder.Address, householder.Contact, householder.Latitude, householder.Longitude)
 	return err
 }
 
 func (repo *MySQLHouseholderRepository) GetHouseholderByID(id string) (*model.Householder, error) {
-	query := "SELECT id, name, email, password, role, address, contact, latitude, longitude FROM users WHERE id = ?"
+	column := []string{"id", "name", "email", "password", "role", "address", "contact", "latitude", "longitude"}
+	query := config.SelectQuery("users", "id", "", column)
+	//query := "SELECT id, name, email, password, role, address, contact, latitude, longitude FROM users WHERE id = ?"
 	row := repo.db.QueryRow(query, id)
 
 	var householder model.Householder

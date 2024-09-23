@@ -68,11 +68,11 @@ func TestGetServiceRequestByID(t *testing.T) {
 	householderAddress := "123 Street"
 
 	row := sqlmock.NewRows([]string{"id", "householder_id", "householder_name", "householder_address", "service_id",
-		"service_name", "requested_time", "scheduled_time", "status", "approve_status"}).
-		AddRow(requestID, &householderID, "John Doe", &householderAddress, "service123", "Service A",
-			time.Now(), time.Now().Add(24*time.Hour), "Pending", false)
+		"requested_time", "scheduled_time", "status", "approve_status", "service_name"}).
+		AddRow(requestID, &householderID, "John Doe", &householderAddress, "Service A",
+			time.Now(), time.Now().Add(24*time.Hour), "Pending", false, "service123")
 
-	mock.ExpectQuery("SELECT sr.id, sr.householder_id").
+	mock.ExpectQuery("SELECT service_requests.id, service_requests.householder_id, service_requests.householder_name, service_requests.householder_address, service_requests.service_id, service_requests.requested_time, service_requests.scheduled_time, service_requests.status, service_requests.approve_status, services.name FROM service_requests INNER JOIN services ON service_requests.service_id = services.id WHERE service_requests.id = ?").
 		WithArgs(requestID).
 		WillReturnRows(row)
 
@@ -101,13 +101,12 @@ func TestGetServiceRequestsByHouseholderID(t *testing.T) {
 		"id", "householder_id", "householder_name", "householder_address", "service_id",
 		"requested_time", "scheduled_time", "status", "approve_status", "service_provider_id",
 		"name", "contact", "address", "price", "rating", "approve",
-	}).
-		AddRow(1, "1001", "John Doe", "123 Main St", "2001", []byte("2024-09-01 12:00:00"),
-			[]byte("2024-09-02 14:00:00"), "Pending", true, "3001", "Provider 1",
-			"1234567890", "456 Provider St", "100.00", 4.5, true)
+	}).AddRow(1, "1001", "John Doe", "123 Main St", "2001", []byte("2024-09-01 12:00:00"),
+		[]byte("2024-09-02 14:00:00"), "Pending", true, "3001", "Provider 1",
+		"1234567890", "456 Provider St", "100.00", 4.5, true)
 
-	// Set up expectation for the query
-	mock.ExpectQuery("SELECT sr.id, sr.householder_id").
+	// Set up expectation for the query, use the full query and escape special characters
+	mock.ExpectQuery(`SELECT service_requests\.id, service_requests\.householder_id, service_requests\.householder_name, service_requests\.householder_address, service_requests\.service_id, service_requests\.requested_time, service_requests\.scheduled_time, service_requests\.status, service_requests\.approve_status, service_provider_details\.service_provider_id, service_provider_details\.name, service_provider_details\.contact, service_provider_details\.address, service_provider_details\.price, service_provider_details\.rating, service_provider_details\.approve FROM service_requests LEFT JOIN service_provider_details ON service_requests\.id = service_provider_details\.service_request_id WHERE service_requests\.householder_id = \?`).
 		WithArgs("1001").
 		WillReturnRows(rows)
 
@@ -186,7 +185,7 @@ func TestGetAllServiceRequests(t *testing.T) {
 			"456 Provider St", "100.00", 4.5, true)
 
 	// Expect the query to return the rows
-	mock.ExpectQuery("SELECT sr.id").
+	mock.ExpectQuery("SELECT service_requests.id").
 		WillReturnRows(rows)
 
 	// Call the method
@@ -222,7 +221,7 @@ func TestGetServiceRequestsByProviderID(t *testing.T) {
 			"456 Provider St", "100.00", 4.5, true)
 
 	// Expect the query to return the rows
-	mock.ExpectQuery("SELECT sr.id").
+	mock.ExpectQuery("SELECT service_requests.id").
 		WithArgs("3001").
 		WillReturnRows(rows)
 
@@ -261,7 +260,7 @@ func TestGetServiceProviderByRequestID(t *testing.T) {
 			"456 Provider St", "100.00", 4.5, true)
 
 	// Set up expectation for the query
-	mock.ExpectQuery("SELECT sr.id, sr.householder_id").
+	mock.ExpectQuery("SELECT service_requests.id, service_requests.householder_id").
 		WithArgs("provider-789", "1001").
 		WillReturnRows(rows)
 
@@ -293,7 +292,7 @@ func TestGetServiceProviderByRequestID_NoRows(t *testing.T) {
 	repo := repository.NewServiceRequestRepository(db)
 
 	// Set up expectation for no rows returned
-	mock.ExpectQuery("SELECT sr.id, sr.householder_id").
+	mock.ExpectQuery("SELECT service_requests.id, service_requests.householder_id").
 		WithArgs("provider-789", "1001").
 		WillReturnRows(sqlmock.NewRows(nil)) // Empty result set
 
@@ -327,7 +326,7 @@ func TestGetServiceProviderByRequestID_ParseRequestedTimeError(t *testing.T) {
 		"Pending", true, "provider-789", "Provider Name", "1234567890",
 		"456 Provider St", "100.00", 4.5, true)
 
-	mock.ExpectQuery("SELECT sr.id, sr.householder_id").
+	mock.ExpectQuery("SELECT service_requests.id, service_requests.householder_id").
 		WithArgs("provider-789", "1001").
 		WillReturnRows(rows)
 
@@ -358,7 +357,7 @@ func TestGetServiceProviderByRequestID_ParseScheduledTimeError(t *testing.T) {
 		"Pending", true, "provider-789", "Provider Name", "1234567890",
 		"456 Provider St", "100.00", 4.5, true)
 
-	mock.ExpectQuery("SELECT sr.id, sr.householder_id").
+	mock.ExpectQuery("SELECT service_requests.id, service_requests.householder_id").
 		WithArgs("provider-789", "1001").
 		WillReturnRows(rows)
 
@@ -380,7 +379,7 @@ func TestGetServiceProviderByRequestID_NoRowsReturned(t *testing.T) {
 	repo := repository.NewServiceRequestRepository(db)
 
 	// Mock no rows returned
-	mock.ExpectQuery("SELECT sr.id, sr.householder_id").
+	mock.ExpectQuery("SELECT service_requests.id, service_requests.householder_id").
 		WithArgs("provider-789", "1001").
 		WillReturnRows(sqlmock.NewRows([]string{}))
 
@@ -402,7 +401,7 @@ func TestGetServiceProviderByRequestID_QueryError(t *testing.T) {
 	repo := repository.NewServiceRequestRepository(db)
 
 	// Mock query error
-	mock.ExpectQuery("SELECT sr.id, sr.householder_id").
+	mock.ExpectQuery("SELECT service_requests.id, service_requests.householder_id").
 		WithArgs("provider-789", "1001").
 		WillReturnError(fmt.Errorf("query error"))
 
@@ -423,7 +422,7 @@ func TestGetServiceRequestsByProviderID_QueryError(t *testing.T) {
 	repo := repository.NewServiceRequestRepository(db)
 
 	// Mock a query error
-	mock.ExpectQuery("SELECT sr.id").
+	mock.ExpectQuery("SELECT service_requests.id").
 		WithArgs("3001").
 		WillReturnError(fmt.Errorf("query error"))
 
@@ -456,7 +455,7 @@ func TestGetServiceRequestsByProviderID_ParseRequestedTimeError(t *testing.T) {
 		"Pending", true, "3001", "Provider 1", "1234567890",
 		"456 Provider St", "100.00", 4.5, true)
 
-	mock.ExpectQuery("SELECT sr.id").
+	mock.ExpectQuery("SELECT service_requests.id").
 		WithArgs("3001").
 		WillReturnRows(rows)
 
@@ -489,7 +488,7 @@ func TestGetServiceRequestsByProviderID_ParseScheduledTimeError(t *testing.T) {
 		"Pending", true, "3001", "Provider 1", "1234567890",
 		"456 Provider St", "100.00", 4.5, true)
 
-	mock.ExpectQuery("SELECT sr.id").
+	mock.ExpectQuery("SELECT service_requests.id").
 		WithArgs("3001").
 		WillReturnRows(rows)
 
@@ -512,7 +511,7 @@ func TestGetServiceRequestsByProviderID_NoRowsReturned(t *testing.T) {
 	repo := repository.NewServiceRequestRepository(db)
 
 	// Mock no rows returned
-	mock.ExpectQuery("SELECT sr.id").
+	mock.ExpectQuery("SELECT service_requests.id").
 		WithArgs("3001").
 		WillReturnRows(sqlmock.NewRows([]string{}))
 

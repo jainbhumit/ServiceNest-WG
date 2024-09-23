@@ -5,6 +5,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"sync"
+	"time"
 )
 
 var (
@@ -13,14 +14,19 @@ var (
 )
 
 // GetMySQLDB returns a singleton instance of the database connection.
-func GetMySQLDB() *sql.DB {
+func GetMySQLDB() (*sql.DB, error) {
+	var err error
 	once.Do(func() {
-		dsn := "root:Asdfghjkl@0987@tcp(localhost:3306)/servicenest"
-		db, err := sql.Open("mysql", dsn)
+		dsn := DSN
+		var db *sql.DB
+		db, err = sql.Open("mysql", dsn)
 		if err != nil {
 			log.Fatalf("Error opening database: %v", err)
 		}
 
+		db.SetMaxOpenConns(100)
+		db.SetMaxIdleConns(50)
+		db.SetConnMaxLifetime(5 * time.Minute)
 		// Test the connection
 		err = db.Ping()
 		if err != nil {
@@ -30,5 +36,5 @@ func GetMySQLDB() *sql.DB {
 		DBS = db
 	})
 
-	return DBS
+	return DBS, err
 }
