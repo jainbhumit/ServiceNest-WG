@@ -19,21 +19,21 @@ func NewHouseholderRepository(client *sql.DB) interfaces.HouseholderRepository {
 }
 
 func (repo *MySQLHouseholderRepository) SaveHouseholder(householder *model.Householder) error {
-	column := []string{"id", "name", "email", "password", "role", "address", "contact", "latitude", "longitude"}
+	column := []string{"id", "name", "email", "password", "role", "address", "contact"}
 	query := config.InsertQuery("users", column)
 	//query := "INSERT INTO users (id, name, email, password, role, address, contact, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-	_, err := repo.db.Exec(query, householder.ID, householder.Name, householder.Email, householder.Password, householder.Role, householder.Address, householder.Contact, householder.Latitude, householder.Longitude)
+	_, err := repo.db.Exec(query, householder.ID, householder.Name, householder.Email, householder.Password, householder.Role, householder.Address, householder.Contact)
 	return err
 }
 
 func (repo *MySQLHouseholderRepository) GetHouseholderByID(id string) (*model.Householder, error) {
-	column := []string{"id", "name", "email", "password", "role", "address", "contact", "latitude", "longitude"}
+	column := []string{"id", "name", "email", "password", "role", "address", "contact"}
 	query := config.SelectQuery("users", "id", "", column)
-	//query := "SELECT id, name, email, password, role, address, contact, latitude, longitude FROM users WHERE id = ?"
+	//query := "SELECT id, name, email, password, role, address, contact FROM users WHERE id = ?"
 	row := repo.db.QueryRow(query, id)
 
 	var householder model.Householder
-	err := row.Scan(&householder.ID, &householder.Name, &householder.Email, &householder.Password, &householder.Role, &householder.Address, &householder.Contact, &householder.Latitude, &householder.Longitude)
+	err := row.Scan(&householder.ID, &householder.Name, &householder.Email, &householder.Password, &householder.Role, &householder.Address, &householder.Contact)
 	if err != nil {
 		return nil, err
 	}

@@ -6,14 +6,15 @@ import (
 )
 
 type AdminService struct {
-	serviceRepo interfaces.ServiceRepository
-	userRepo    interfaces.UserRepository
+	serviceRepo     interfaces.ServiceRepository
+	userRepo        interfaces.UserRepository
+	householderRepo interfaces.HouseholderRepository
 	//serviceAreaRepo *repository_test.ServiceAreaRepository
 	providerRepo       interfaces.ServiceProviderRepository
 	serviceRequestRepo interfaces.ServiceRequestRepository
 }
 
-func NewAdminService(serviceRepo interfaces.ServiceRepository, serviceRequestRepo interfaces.ServiceRequestRepository, userRepo interfaces.UserRepository, providerRepo interfaces.ServiceProviderRepository) *AdminService {
+func NewAdminService(serviceRepo interfaces.ServiceRepository, serviceRequestRepo interfaces.ServiceRequestRepository, userRepo interfaces.UserRepository, providerRepo interfaces.ServiceProviderRepository) interfaces.AdminService {
 	return &AdminService{
 		serviceRepo: serviceRepo,
 		userRepo:    userRepo,

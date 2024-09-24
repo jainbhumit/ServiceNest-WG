@@ -318,7 +318,7 @@ func (repo *ServiceRequestRepository) GetServiceRequestsByProviderID(providerID 
 func (repo *ServiceRequestRepository) GetServiceProviderByRequestID(requestID, providerID string) (*model.ServiceRequest, error) {
 	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
 	secondTableColumn := []string{"service_provider_id", "name", "contact", "address", "price", "rating", "approve"}
-	query := config.SelectInnerJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "service_provider_details.service_provider_id = ? AND service_requests", firstTableColumn, secondTableColumn)
+	query := config.SelectInnerJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "service_provider_details.service_provider_id = ? AND service_requests.id", firstTableColumn, secondTableColumn)
 
 	//query := `SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status,
 	//spd.service_provider_id, spd.name, spd.contact, spd.address, spd.price, spd.rating, spd.approve

@@ -33,7 +33,7 @@ func TestViewStatus(t *testing.T) {
 		GetServiceRequestsByHouseholderID(householder.ID).
 		Return(requests, nil)
 
-	result, err := service.ViewStatus(service, householder)
+	result, err := service.ViewStatus(householder.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, requests, result)
 }
@@ -87,9 +87,9 @@ func TestSearchService(t *testing.T) {
 
 	service := service.NewHouseholderService(mockHouseholderRepo, mockProviderRepo, mockServiceRepo, mockServiceRequestRepo)
 
-	householder := &model.Householder{User: model.User{ID: "householder1", Latitude: 10, Longitude: 10}}
+	householder := &model.Householder{User: model.User{ID: "householder1"}}
 	providers := []model.ServiceProvider{
-		{User: model.User{ID: "provider1", Latitude: 10, Longitude: 10}, ServicesOffered: []model.Service{{ID: "service1", Name: "Cleaning"}}},
+		{User: model.User{ID: "provider1"}, ServicesOffered: []model.Service{{ID: "service1", Name: "Cleaning"}}},
 	}
 
 	mockProviderRepo.EXPECT().
@@ -289,9 +289,11 @@ func TestCancelServiceRequest(t *testing.T) {
 	service := service.NewHouseholderService(mockHouseholderRepo, mockProviderRepo, mockServiceRepo, mockServiceRequestRepo)
 
 	requestID := "request1"
+	householderID := "householder1"
 	serviceRequest := &model.ServiceRequest{
-		ID:     requestID,
-		Status: "Pending",
+		ID:            requestID,
+		HouseholderID: &householderID,
+		Status:        "Pending",
 	}
 
 	mockServiceRequestRepo.EXPECT().
@@ -305,7 +307,7 @@ func TestCancelServiceRequest(t *testing.T) {
 		}).
 		Return(nil)
 
-	err := service.CancelServiceRequest(requestID)
+	err := service.CancelServiceRequest(requestID, householderID)
 	assert.NoError(t, err)
 	assert.Equal(t, "Cancelled", serviceRequest.Status)
 }
@@ -322,10 +324,12 @@ func TestRescheduleServiceRequest(t *testing.T) {
 	service := service.NewHouseholderService(mockHouseholderRepo, mockProviderRepo, mockServiceRepo, mockServiceRequestRepo)
 
 	requestID := "request1"
+	householderID := "householer1"
 	newTime := time.Now().Add(time.Hour * 24)
 	serviceRequest := &model.ServiceRequest{
 		ID:            requestID,
 		Status:        "Pending",
+		HouseholderID: &householderID,
 		ScheduledTime: time.Now(),
 	}
 
@@ -340,7 +344,7 @@ func TestRescheduleServiceRequest(t *testing.T) {
 		}).
 		Return(nil)
 
-	err := service.RescheduleServiceRequest(requestID, newTime)
+	err := service.RescheduleServiceRequest(requestID, newTime, householderID)
 	assert.NoError(t, err)
 	assert.Equal(t, newTime, serviceRequest.ScheduledTime)
 }
@@ -451,6 +455,7 @@ func TestApproveServiceRequest(t *testing.T) {
 
 	requestID := "request123"
 	providerID := "provider123"
+	householderID := "householder1"
 
 	// Define test cases
 	tests := []struct {
@@ -465,6 +470,7 @@ func TestApproveServiceRequest(t *testing.T) {
 			name: "Successful approval",
 			serviceRequest: &model.ServiceRequest{
 				ID:            requestID,
+				HouseholderID: &householderID,
 				ApproveStatus: false,
 				ProviderDetails: []model.ServiceProviderDetails{
 					{ServiceProviderID: providerID, Approve: false},
@@ -479,6 +485,7 @@ func TestApproveServiceRequest(t *testing.T) {
 			name: "Service request already approved",
 			serviceRequest: &model.ServiceRequest{
 				ID:            requestID,
+				HouseholderID: &householderID,
 				ApproveStatus: true,
 				ProviderDetails: []model.ServiceProviderDetails{
 					{ServiceProviderID: providerID, Approve: false},
@@ -502,6 +509,7 @@ func TestApproveServiceRequest(t *testing.T) {
 			serviceRequest: &model.ServiceRequest{
 				ID:            requestID,
 				ApproveStatus: false,
+				HouseholderID: &householderID,
 				ProviderDetails: []model.ServiceProviderDetails{
 					{ServiceProviderID: providerID, Approve: false},
 				},
@@ -515,6 +523,7 @@ func TestApproveServiceRequest(t *testing.T) {
 			name: "Error updating service request",
 			serviceRequest: &model.ServiceRequest{
 				ID:            requestID,
+				HouseholderID: &householderID,
 				ApproveStatus: false,
 				ProviderDetails: []model.ServiceProviderDetails{
 					{ServiceProviderID: providerID, Approve: true},
@@ -552,7 +561,7 @@ func TestApproveServiceRequest(t *testing.T) {
 			}
 
 			// Call the function under test
-			err := service.ApproveServiceRequest(requestID, providerID)
+			err := service.ApproveServiceRequest(requestID, providerID, householderID)
 
 			// Assert the result
 			assert.Equal(t, tt.expectedErr, err)
@@ -767,6 +776,7 @@ func TestGetAvailableServices(t *testing.T) {
 	assert.Equal(t, services, availableServices)
 	assert.Nil(t, err)
 }
+
 func TestRequestService(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -779,7 +789,7 @@ func TestRequestService(t *testing.T) {
 	// Mock unique ID generation
 	originalGenerateUniqueID := service.GetUniqueID
 	service.GetUniqueID = func() string {
-		return "uniqueID"
+		return "uniqueRequestID"
 	}
 	defer func() { service.GetUniqueID = originalGenerateUniqueID }()
 
@@ -797,22 +807,28 @@ func TestRequestService(t *testing.T) {
 	scheduledTime := time.Now().Add(24 * time.Hour)
 
 	tests := []struct {
-		name              string
-		getServiceErr     error
-		service           *model.Service
-		saveServiceErr    error
-		saveRequestErr    error
-		expectedRequestID string
-		expectedErr       error
+		name                string
+		getServiceErr       error
+		service             *model.Service
+		saveServiceErr      error
+		saveRequestErr      error
+		expectedRequestID   string
+		expectedErr         error
+		expectHouseholder   bool
+		householderErr      error
+		expectedHouseholder *model.Householder
 	}{
 		{
-			name:              "Service exists, successful request creation",
-			getServiceErr:     nil,
-			service:           &model.Service{ID: "existingServiceID"},
-			saveServiceErr:    nil,
-			saveRequestErr:    nil,
-			expectedRequestID: "uniqueID",
-			expectedErr:       nil,
+			name:                "Service exists, successful request creation",
+			getServiceErr:       nil,
+			service:             &model.Service{ID: "existingServiceID"},
+			saveServiceErr:      nil,
+			saveRequestErr:      nil,
+			expectedRequestID:   "uniqueRequestID",
+			expectedErr:         nil,
+			expectHouseholder:   true,
+			householderErr:      nil,
+			expectedHouseholder: householder,
 		},
 		{
 			name:              "Error fetching service",
@@ -822,15 +838,19 @@ func TestRequestService(t *testing.T) {
 			saveRequestErr:    nil,
 			expectedRequestID: "",
 			expectedErr:       errors.New("service fetch error"),
+			expectHouseholder: false,
 		},
 		{
-			name:              "Service does not exist, successful custom service creation",
-			getServiceErr:     nil,
-			service:           nil,
-			saveServiceErr:    nil,
-			saveRequestErr:    nil,
-			expectedRequestID: "uniqueID",
-			expectedErr:       nil,
+			name:                "Service does not exist, successful custom service creation",
+			getServiceErr:       nil,
+			service:             nil,
+			saveServiceErr:      nil,
+			saveRequestErr:      nil,
+			expectedRequestID:   "uniqueRequestID",
+			expectedErr:         nil,
+			expectHouseholder:   true,
+			householderErr:      nil,
+			expectedHouseholder: householder,
 		},
 		{
 			name:              "Service does not exist, error creating custom service",
@@ -840,6 +860,18 @@ func TestRequestService(t *testing.T) {
 			saveRequestErr:    nil,
 			expectedRequestID: "",
 			expectedErr:       errors.New("save service error"),
+			expectHouseholder: false,
+		},
+		{
+			name:              "Error fetching householder",
+			getServiceErr:     nil,
+			service:           &model.Service{ID: "existingServiceID"},
+			saveServiceErr:    nil,
+			saveRequestErr:    nil,
+			expectedRequestID: "",
+			expectedErr:       errors.New("householder fetch error"),
+			expectHouseholder: true,
+			householderErr:    errors.New("householder fetch error"),
 		},
 	}
 
@@ -851,46 +883,44 @@ func TestRequestService(t *testing.T) {
 				Return(tt.service, tt.getServiceErr).
 				Times(1)
 
-			// If there's an error fetching the service, SaveService and SaveServiceRequest should NOT be called
-			if tt.getServiceErr != nil {
+			// If the service is not found, expect SaveService to be called
+			if tt.service == nil && tt.getServiceErr == nil {
+				mockServiceRepo.EXPECT().
+					SaveService(gomock.Any()).
+					Return(tt.saveServiceErr).
+					Times(1)
+
+				// If there's an error saving the custom service, do not expect SaveServiceRequest to be called
+				if tt.saveServiceErr != nil {
+					mockServiceRequestRepo.EXPECT().
+						SaveServiceRequest(gomock.Any()).
+						Times(0)
+				}
+			} else {
+				// Ensure SaveService is not called if the service exists or an error occurs fetching the service
 				mockServiceRepo.EXPECT().
 					SaveService(gomock.Any()).
 					Times(0)
+			}
 
+			// Mock the call to GetHouseholderByID
+			if tt.expectHouseholder {
+				mockHouseholderRepo.EXPECT().
+					GetHouseholderByID(householder.ID).
+					Return(tt.expectedHouseholder, tt.householderErr).
+					Times(1)
+			}
+
+			// If the householder is fetched correctly and no service error exists
+			if tt.householderErr == nil && tt.saveServiceErr == nil && tt.getServiceErr == nil {
 				mockServiceRequestRepo.EXPECT().
 					SaveServiceRequest(gomock.Any()).
-					Times(0)
-			} else {
-				// If the service is not found, expect SaveService to be called
-				if tt.service == nil {
-					mockServiceRepo.EXPECT().
-						SaveService(gomock.Any()).
-						Return(tt.saveServiceErr).
-						Times(1)
-					// If there's an error saving the custom service, do not expect SaveServiceRequest to be called
-					if tt.saveServiceErr != nil {
-						mockServiceRequestRepo.EXPECT().
-							SaveServiceRequest(gomock.Any()).
-							Times(0)
-					}
-				} else {
-					// Ensure SaveService is not called if the service exists
-					mockServiceRepo.EXPECT().
-						SaveService(gomock.Any()).
-						Times(0)
-				}
-
-				// Mock the call to SaveServiceRequest
-				if tt.saveServiceErr == nil {
-					mockServiceRequestRepo.EXPECT().
-						SaveServiceRequest(gomock.Any()).
-						Return(tt.saveRequestErr).
-						Times(1)
-				}
+					Return(tt.saveRequestErr).
+					Times(1)
 			}
 
 			// Call the method under test
-			requestID, err := householderService.RequestService(householder, serviceName, &scheduledTime)
+			requestID, err := householderService.RequestService(householder.ID, serviceName, &scheduledTime)
 
 			// Assert results
 			assert.Equal(t, tt.expectedRequestID, requestID)

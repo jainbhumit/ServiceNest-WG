@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/fatih/color"
 	"serviceNest/interfaces"
 	"serviceNest/model"
 	"serviceNest/util"
@@ -19,7 +18,7 @@ type HouseholderService struct {
 	serviceRequestRepo interfaces.ServiceRequestRepository
 }
 
-func NewHouseholderService(householderRepo interfaces.HouseholderRepository, providerRepo interfaces.ServiceProviderRepository, serviceRepo interfaces.ServiceRepository, serviceRequestRepo interfaces.ServiceRequestRepository) *HouseholderService {
+func NewHouseholderService(householderRepo interfaces.HouseholderRepository, providerRepo interfaces.ServiceProviderRepository, serviceRepo interfaces.ServiceRepository, serviceRequestRepo interfaces.ServiceRequestRepository) interfaces.HouseholderService {
 	return &HouseholderService{
 		householderRepo:    householderRepo,
 		providerRepo:       providerRepo,
@@ -27,11 +26,10 @@ func NewHouseholderService(householderRepo interfaces.HouseholderRepository, pro
 		serviceRequestRepo: serviceRequestRepo,
 	}
 }
-func (s *HouseholderService) ViewStatus(serviceRequestRepo *HouseholderService, householder *model.Householder) ([]model.ServiceRequest, error) {
+func (s *HouseholderService) ViewStatus(householderID string) ([]model.ServiceRequest, error) {
 	// Fetch all service requests for the householder
-	requests, err := s.serviceRequestRepo.GetServiceRequestsByHouseholderID(householder.ID)
+	requests, err := s.serviceRequestRepo.GetServiceRequestsByHouseholderID(householderID)
 	if err != nil {
-		color.Red("Error fetching service requests: %v", err)
 		return nil, err
 	}
 	return requests, nil
@@ -115,7 +113,7 @@ func (s *HouseholderService) GetServicesByCategory(category string) ([]model.Ser
 }
 
 // RequestService allows the householder to request a service_test from a provider
-func (s *HouseholderService) RequestService(householder *model.Householder, serviceName string, scheduleTime *time.Time) (string, error) {
+func (s *HouseholderService) RequestService(householderID string, serviceName string, scheduleTime *time.Time) (string, error) {
 	// Check if the service already exists
 	service, err := s.serviceRepo.GetServiceByName(serviceName)
 	if err != nil && err.Error() != "service not found" {
@@ -147,6 +145,11 @@ func (s *HouseholderService) RequestService(householder *model.Householder, serv
 	// Generate a unique ID for the service request
 	requestID := GetUniqueID()
 
+	// Fetch householder detail from Db
+	householder, err := s.householderRepo.GetHouseholderByID(householderID)
+	if err != nil {
+		return "", err
+	}
 	// Create the service request
 	serviceRequest := model.ServiceRequest{
 		ID:                 requestID,
@@ -187,12 +190,15 @@ func (s *HouseholderService) GetAvailableServices() ([]model.Service, error) {
 }
 
 // CancelServiceRequest allows the householder to cancel a service_test request
-func (s *HouseholderService) CancelServiceRequest(requestID string) error {
+func (s *HouseholderService) CancelServiceRequest(requestID string, householderID string) error {
 	request, err := s.serviceRequestRepo.GetServiceRequestByID(requestID)
 	if err != nil {
 		return err
 	}
 
+	if *request.HouseholderID != householderID {
+		return errors.New("service request does not belong to the householder")
+	}
 	if request.Status == "Cancelled" {
 		return fmt.Errorf("service request is already cancelled")
 	}
@@ -202,12 +208,15 @@ func (s *HouseholderService) CancelServiceRequest(requestID string) error {
 }
 
 // RescheduleServiceRequest allows the householder to reschedule a service_test request
-func (s *HouseholderService) RescheduleServiceRequest(requestID string, newTime time.Time) error {
+func (s *HouseholderService) RescheduleServiceRequest(requestID string, newTime time.Time, householderID string) error {
 	request, err := s.serviceRequestRepo.GetServiceRequestByID(requestID)
 	if err != nil {
 		return err
 	}
 
+	if *request.HouseholderID != householderID {
+		return errors.New("service request does not belong to the householder")
+	}
 	if request.Status != "Pending" && request.Status != "Accepted" {
 		return fmt.Errorf("only pending or accepted requests can be rescheduled")
 	}
@@ -252,13 +261,16 @@ func (s *HouseholderService) AddReview(providerID, householderID, serviceID, com
 	return nil
 }
 
-func (s *HouseholderService) ApproveServiceRequest(requestID string, providerID string) error {
+func (s *HouseholderService) ApproveServiceRequest(requestID string, providerID string, householderID string) error {
 	// Retrieve the service request by ID
 	serviceRequest, err := s.serviceRequestRepo.GetServiceProviderByRequestID(requestID, providerID)
 	if err != nil {
 		return fmt.Errorf("could not find service request: %v", err)
 	}
 
+	if *serviceRequest.HouseholderID != householderID {
+		return errors.New("service request does not belong to the householder")
+	}
 	// Check if the request has already been approved
 	if serviceRequest.ApproveStatus {
 		return errors.New("service request has already been approved")
@@ -266,6 +278,7 @@ func (s *HouseholderService) ApproveServiceRequest(requestID string, providerID 
 
 	// Set the approval status to true
 	serviceRequest.ApproveStatus = true
+	serviceRequest.Status = "Approved"
 	for _, provider := range serviceRequest.ProviderDetails {
 		if provider.ServiceProviderID == providerID {
 			provider.Approve = true

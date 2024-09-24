@@ -145,7 +145,7 @@ func TestAcceptServiceRequestWithMockInput(t *testing.T) {
 	svc := service.NewServiceProviderService(mockServiceProviderRepo, mockServiceRequestRepo, nil)
 
 	// Call the method
-	err = svc.AcceptServiceRequest(providerID, requestID)
+	err = svc.AcceptServiceRequest(providerID, requestID, "150")
 
 	// Check for errors
 	if err != nil {
@@ -295,7 +295,7 @@ func TestGetAllServiceRequests(t *testing.T) {
 	assert.Equal(t, mockServiceRequest, result)
 
 }
-func TestViewApprovedRequestsByHouseholder(t *testing.T) {
+func TestViewApprovedRequestsByProvider(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -346,7 +346,7 @@ func TestViewApprovedRequestsByHouseholder(t *testing.T) {
 	svc := service.NewServiceProviderService(nil, mockServiceRequestRepo, nil)
 
 	// Call the function to test
-	approvedRequests, err := svc.ViewApprovedRequestsByHouseholder(providerID)
+	approvedRequests, err := svc.ViewApprovedRequestsByProvider(providerID)
 
 	// Assertions
 	if err != nil {
@@ -365,7 +365,7 @@ func TestViewApprovedRequestsByHouseholder(t *testing.T) {
 	}
 }
 
-func TestViewApprovedRequestsByHouseholder_NoApprovedRequests(t *testing.T) {
+func TestViewApprovedRequestsByProvider_NoApprovedRequests(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -406,7 +406,7 @@ func TestViewApprovedRequestsByHouseholder_NoApprovedRequests(t *testing.T) {
 	svc := service.NewServiceProviderService(nil, mockServiceRequestRepo, nil)
 
 	// Call the function to test
-	_, err := svc.ViewApprovedRequestsByHouseholder(providerID)
+	_, err := svc.ViewApprovedRequestsByProvider(providerID)
 
 	// Assertions
 	if err == nil {
@@ -419,7 +419,7 @@ func TestViewApprovedRequestsByHouseholder_NoApprovedRequests(t *testing.T) {
 	}
 }
 
-func TestViewApprovedRequestsByHouseholder_ErrorRetrievingRequests(t *testing.T) {
+func TestViewApprovedRequestsByProvider_ErrorRetrievingRequests(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -436,7 +436,7 @@ func TestViewApprovedRequestsByHouseholder_ErrorRetrievingRequests(t *testing.T)
 	svc := service.NewServiceProviderService(nil, mockServiceRequestRepo, nil)
 
 	// Call the function to test
-	_, err := svc.ViewApprovedRequestsByHouseholder(providerID)
+	_, err := svc.ViewApprovedRequestsByProvider(providerID)
 
 	// Assertions
 	if err == nil {
@@ -646,7 +646,7 @@ func TestAcceptServiceRequestEdgeCases(t *testing.T) {
 			svc := service.NewServiceProviderService(mockServiceProviderRepo, mockServiceRequestRepo, nil)
 
 			// Call the method
-			err = svc.AcceptServiceRequest(providerID, requestID)
+			err = svc.AcceptServiceRequest(providerID, requestID, "150")
 
 			// Check for errors
 			if err != nil {

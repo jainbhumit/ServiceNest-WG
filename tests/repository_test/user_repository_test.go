@@ -20,20 +20,18 @@ func TestSaveUser(t *testing.T) {
 
 	// Step 3: Define the mock behavior for the INSERT INTO users query
 	mock.ExpectExec("INSERT INTO users").
-		WithArgs("123", "John Doe", "john@example.com", "hashed_password", "Householder", "123 Main St", "1234567890", 12.34, 56.78).
+		WithArgs("123", "John Doe", "john@example.com", "hashed_password", "Householder", "123 Main St", "1234567890").
 		WillReturnResult(sqlmock.NewResult(1, 1)) // Simulate successful insert
 
 	// Step 4: Define the user object that we want to save
 	user := &model.User{
-		ID:        "123",
-		Name:      "John Doe",
-		Email:     "john@example.com",
-		Password:  "hashed_password",
-		Role:      "Householder",
-		Address:   "123 Main St",
-		Contact:   "1234567890",
-		Latitude:  12.34,
-		Longitude: 56.78,
+		ID:       "123",
+		Name:     "John Doe",
+		Email:    "john@example.com",
+		Password: "hashed_password",
+		Role:     "Householder",
+		Address:  "123 Main St",
+		Contact:  "1234567890",
 	}
 
 	// Step 5: Call the SaveUser method from the repository
@@ -57,8 +55,8 @@ func TestGetUserByEmail(t *testing.T) {
 	repo := repository.NewUserRepository(db)
 
 	// Mock row returned by query
-	rows := sqlmock.NewRows([]string{"id", "name", "email", "password", "role", "address", "contact", "latitude", "longitude"}).
-		AddRow("123", "John Doe", "john@example.com", "hashed_password", "user", "123 Main St", "1234567890", 12.34, 56.78)
+	rows := sqlmock.NewRows([]string{"id", "name", "email", "password", "role", "address", "contact"}).
+		AddRow("123", "John Doe", "john@example.com", "hashed_password", "user", "123 Main St", "1234567890")
 
 	// Expect the query with the provided email
 	mock.ExpectQuery("SELECT id, name, email, password").
@@ -121,20 +119,18 @@ func TestUpdateUser(t *testing.T) {
 
 	// Mock Exec for updating user
 	mock.ExpectExec("UPDATE users").
-		WithArgs("John Updated", "john@example.com", "new_hashed_password", "admin", "123 New St", "0987654321", 21.43, 65.87, "123").
+		WithArgs("John Updated", "john@example.com", "new_hashed_password", "admin", "123 New St", "0987654321", "123").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	// Create updated user
 	updatedUser := &model.User{
-		ID:        "123",
-		Name:      "John Updated",
-		Email:     "john@example.com",
-		Password:  "new_hashed_password",
-		Role:      "admin",
-		Address:   "123 New St",
-		Contact:   "0987654321",
-		Latitude:  21.43,
-		Longitude: 65.87,
+		ID:       "123",
+		Name:     "John Updated",
+		Email:    "john@example.com",
+		Password: "new_hashed_password",
+		Role:     "admin",
+		Address:  "123 New St",
+		Contact:  "0987654321",
 	}
 
 	// Call UpdateUser and assert no error
@@ -155,8 +151,8 @@ func TestGetUserByID(t *testing.T) {
 	repo := repository.NewUserRepository(db)
 
 	// Mock row returned by query
-	rows := sqlmock.NewRows([]string{"id", "name", "email", "password", "role", "address", "contact", "latitude", "longitude"}).
-		AddRow("123", "John Doe", "john@example.com", "hashed_password", "user", "123 Main St", "1234567890", 12.34, 56.78)
+	rows := sqlmock.NewRows([]string{"id", "name", "email", "password", "role", "address", "contact"}).
+		AddRow("123", "John Doe", "john@example.com", "hashed_password", "user", "123 Main St", "1234567890")
 
 	// Expect the query with the provided user ID
 	mock.ExpectQuery("SELECT id, name, email, password").
