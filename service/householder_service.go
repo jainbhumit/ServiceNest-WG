@@ -153,6 +153,7 @@ func (s *HouseholderService) RequestService(householderID string, serviceName st
 	// Create the service request
 	serviceRequest := model.ServiceRequest{
 		ID:                 requestID,
+		ServiceName:        serviceName,
 		HouseholderName:    householder.Name,
 		HouseholderID:      &householder.User.ID,
 		HouseholderAddress: &householder.Address,

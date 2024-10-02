@@ -33,13 +33,13 @@ func (s *ServiceProviderController) AddService(w http.ResponseWriter, r *http.Re
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		logger.Error("Invalid input", nil)
-		response.ErrorResponse(w, http.StatusBadRequest, "Invalid input")
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid input", 1001)
 		return
 	}
 	err := validate.Struct(request)
 	if err != nil {
 		logger.Error("Invalid request body", nil)
-		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
 		return
 	}
 	providerID := r.Context().Value("userID").(string)
@@ -56,7 +56,7 @@ func (s *ServiceProviderController) AddService(w http.ResponseWriter, r *http.Re
 	err = s.serviceProviderService.AddService(providerID, *newService)
 	if err != nil {
 		logger.Error("Error adding service", nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		response.ErrorResponse(w, http.StatusInternalServerError, err.Error(), 1003)
 
 		//http.Error(w, "Error adding service", http.StatusInternalServerError)
 		return
@@ -75,7 +75,7 @@ func (s *ServiceProviderController) ViewServices(w http.ResponseWriter, r *http.
 	services, err := s.serviceProviderService.ViewServices(providerID)
 	if err != nil {
 		logger.Error(err.Error(), nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, "Error fetching services")
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error fetching services", 1006)
 		//http.Error(w, "Error fetching services", http.StatusInternalServerError)
 		return
 	}
@@ -100,13 +100,13 @@ func (h *ServiceProviderController) UpdateService(w http.ResponseWriter, r *http
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		logger.Error("Invalid input", nil)
-		response.ErrorResponse(w, http.StatusBadRequest, "Invalid input")
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid input", 1001)
 		return
 	}
 	err := validate.Struct(request)
 	if err != nil {
 		logger.Error("Invalid request body", nil)
-		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
 		return
 	}
 	providerID := r.Context().Value("userID").(string)
@@ -123,7 +123,7 @@ func (h *ServiceProviderController) UpdateService(w http.ResponseWriter, r *http
 	err = h.serviceProviderService.UpdateService(providerID, serviceID, *updatedService)
 	if err != nil {
 		logger.Error("Error updating service", nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		response.ErrorResponse(w, http.StatusInternalServerError, err.Error(), 1003)
 		//http.Error(w, "Error updating service", http.StatusInternalServerError)
 		return
 	}
@@ -139,7 +139,7 @@ func (s *ServiceProviderController) RemoveService(w http.ResponseWriter, r *http
 	err := s.serviceProviderService.RemoveService(providerID, serviceID)
 	if err != nil {
 		logger.Error("Error removing service", nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		response.ErrorResponse(w, http.StatusInternalServerError, err.Error(), 1008)
 		//http.Error(w, "Error removing service", http.StatusInternalServerError)
 		return
 	}
@@ -152,7 +152,7 @@ func (s *ServiceProviderController) ViewServiceRequest(w http.ResponseWriter, r 
 	serviceRequests, err := s.serviceProviderService.GetAllServiceRequests()
 	if err != nil {
 		logger.Error(err.Error(), nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, fmt.Sprintf("error fetching request %v", err))
+		response.ErrorResponse(w, http.StatusInternalServerError, fmt.Sprintf("error fetching request %v", err), 1006)
 		return
 	}
 
@@ -198,14 +198,14 @@ func (s *ServiceProviderController) AcceptServiceRequest(w http.ResponseWriter, 
 	}
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		response.ErrorResponse(w, http.StatusBadRequest, "Invalid body")
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid body", 1001)
 		//http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 	err = validate.Struct(request)
 	if err != nil {
 		logger.Error("Invalid request body", nil)
-		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
 		return
 	}
 
@@ -213,7 +213,7 @@ func (s *ServiceProviderController) AcceptServiceRequest(w http.ResponseWriter, 
 	err = s.serviceProviderService.AcceptServiceRequest(providerID, request.ID, request.EstimatedPrice)
 	if err != nil {
 		logger.Error(err.Error(), nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, "Error accepting service request")
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error accepting service request", 1008)
 		//http.Error(w, "Error accepting service request", http.StatusInternalServerError)
 		return
 	}
@@ -230,7 +230,7 @@ func (s *ServiceProviderController) ViewApprovedRequests(w http.ResponseWriter, 
 
 	if err != nil {
 		logger.Error(err.Error(), nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		response.ErrorResponse(w, http.StatusInternalServerError, err.Error(), 1008)
 
 		//http.Error(w, "Error fetching approved requests", http.StatusInternalServerError)
 		return
@@ -280,7 +280,7 @@ func (s *ServiceProviderController) ViewReviews(w http.ResponseWriter, r *http.R
 	reviews, err := s.serviceProviderService.GetReviews(providerID)
 	if err != nil {
 		logger.Error(err.Error(), nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, "Failed to fetch reviews")
+		response.ErrorResponse(w, http.StatusInternalServerError, "Failed to fetch reviews", 1003)
 
 		//http.Error(w, "Failed to fetch reviews", http.StatusInternalServerError)
 		return

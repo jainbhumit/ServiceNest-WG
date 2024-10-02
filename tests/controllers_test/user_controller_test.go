@@ -42,6 +42,7 @@ func TestLoginUser(t *testing.T) {
 			Password: "$2a$10$VwW8.kUj8lB.gPiQVHGX5uOEPJFM6PgfVHLZ4g/cOhUHTBZZ6XmdS", // hashed "password123"
 			Role:     "user",
 			ID:       "1",
+			IsActive: true,
 		}
 
 		mockUserService.EXPECT().CheckUserExists("user@example.com").Return(mockUser, nil)
@@ -138,6 +139,12 @@ func TestLoginUser(t *testing.T) {
 		//}
 	})
 
+	type ErrorResponse struct {
+		Status    string `json:"status"`
+		Message   string `json:"message"`
+		ErrorCode int    `json:"error_code"`
+	}
+
 	t.Run("Error generating token", func(t *testing.T) {
 		userInput := map[string]string{
 			"email":    "user@example.com",
@@ -157,6 +164,7 @@ func TestLoginUser(t *testing.T) {
 			Password: "$2a$10$VwW8.kUj8lB.gPiQVHGX5uOEPJFM6PgfVHLZ4g/cOhUHTBZZ6XmdS", // hashed "password123"
 			Role:     "user",
 			ID:       "1",
+			IsActive: true,
 		}
 
 		mockUserService.EXPECT().CheckUserExists("user@example.com").Return(mockUser, nil)
@@ -175,7 +183,7 @@ func TestLoginUser(t *testing.T) {
 			controllers.GenerateJWT = originalGenerateJWT
 		}()
 		controllers.GenerateJWT = func(id, role string) (string, error) {
-			return "", errors.New("error generating token")
+			return "", errors.New("Error generating token")
 		}
 
 		// Call the login handler
@@ -186,11 +194,22 @@ func TestLoginUser(t *testing.T) {
 			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
 		}
 
-		// Check that the body contains the correct error message
-		expectedResponse := `{"status":"Fail","message":"Error generating token"}`
-		if !bytes.Contains(rr.Body.Bytes(), []byte(expectedResponse)) {
-			t.Errorf("handler returned unexpected body: got %v", rr.Body.String())
+		// Unmarshal actual response
+		var actualResponse ErrorResponse
+		err = json.Unmarshal(rr.Body.Bytes(), &actualResponse)
+		if err != nil {
+			t.Fatalf("failed to unmarshal actual response: %v", err)
 		}
+
+		// Expected response
+		expectedResponse := ErrorResponse{
+			Status:    "Fail",
+			Message:   "Error generating token",
+			ErrorCode: 1006, // This is an int
+		}
+
+		// Compare the actual and expected response
+		assert.Equal(t, expectedResponse, actualResponse)
 	})
 
 }
@@ -232,7 +251,7 @@ func TestLoginUser_InvalidPassword(t *testing.T) {
 	userController.LoginUser(rr, req)
 
 	assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	expectedResponse := `{"status":"Fail","message":"Invalid password"}`
+	expectedResponse := `{"status":"Fail","error_code":1005,"message":"Invalid password"}`
 	assert.JSONEq(t, expectedResponse, rr.Body.String())
 }
 func TestSignupUser(t *testing.T) {
@@ -297,7 +316,7 @@ func TestSignupUser(t *testing.T) {
 		userController.SignupUser(rr, req)
 
 		assert.Equal(t, http.StatusConflict, rr.Code)
-		expectedResponse := `{"status":"Fail","message":"User already exists"}`
+		expectedResponse := `{"status":"Fail","error_code":1009,"message":"User already exists"}`
 		assert.JSONEq(t, expectedResponse, rr.Body.String())
 	})
 	t.Run("Invalid request body", func(t *testing.T) {
@@ -321,7 +340,7 @@ func TestSignupUser(t *testing.T) {
 		userController.SignupUser(rr, req)
 
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
-		expectedResponse := `{"status":"Fail","message":"Invalid request body"}`
+		expectedResponse := `{"status":"Fail","error_code":1001,"message":"Invalid request body"}`
 		assert.JSONEq(t, expectedResponse, rr.Body.String())
 
 	})
@@ -355,7 +374,7 @@ func TestSignupUser(t *testing.T) {
 		userController.SignupUser(rr, req)
 
 		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-		expectedResponse := `{"status":"Fail","message":"Error hashing password"}`
+		expectedResponse := `{"status":"Fail","error_code":1006,"message":"Error hashing password"}`
 		assert.JSONEq(t, expectedResponse, rr.Body.String())
 
 	})
@@ -384,7 +403,7 @@ func TestSignupUser(t *testing.T) {
 		userController.SignupUser(rr, req)
 
 		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-		expectedResponse := `{"status":"Fail","message":"Error creating user"}`
+		expectedResponse := `{"status":"Fail","error_code":1006,"message":"Error creating user"}`
 		assert.JSONEq(t, expectedResponse, rr.Body.String())
 
 	})
@@ -500,7 +519,7 @@ func TestUpdateUserHandler(t *testing.T) {
 
 		// Assert response
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
-		expectedResponse := `{"status":"Fail","message":"password must be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special symbol"}`
+		expectedResponse := `{"status":"Fail","error_code":1001,"message":"password must be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special symbol"}`
 		assert.JSONEq(t, expectedResponse, rr.Body.String())
 	})
 
@@ -533,7 +552,7 @@ func TestUpdateUserHandler(t *testing.T) {
 
 		// Assert response
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
-		expectedResponse := `{"status":"Fail","message":"password is too weak"}`
+		expectedResponse := `{"status":"Fail","error_code":1001,"message":"password is too weak"}`
 		assert.JSONEq(t, expectedResponse, rr.Body.String())
 	})
 	t.Run("Error hashing password", func(t *testing.T) {
@@ -565,7 +584,7 @@ func TestUpdateUserHandler(t *testing.T) {
 
 		// Assert response
 		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-		expectedResponse := `{"status":"Fail","message":"Error hashing password"}`
+		expectedResponse := `{"status":"Fail","error_code":1006,"message":"Error hashing password"}`
 		assert.JSONEq(t, expectedResponse, rr.Body.String())
 	})
 	t.Run("Error during UpdateUser service call", func(t *testing.T) {
@@ -600,7 +619,7 @@ func TestUpdateUserHandler(t *testing.T) {
 
 		// Assert response
 		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-		expectedResponse := `{"status":"Fail","message":"Error updating user"}`
+		expectedResponse := `{"status":"Fail","error_code":1006,"message":"Error updating user"}`
 		assert.JSONEq(t, expectedResponse, rr.Body.String())
 	})
 }

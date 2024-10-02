@@ -18,22 +18,22 @@ func NewUserRepository(db *sql.DB) interfaces.UserRepository {
 }
 
 func (repo *UserRepository) SaveUser(user *model.User) error {
-	column := []string{"id", "name", "email", "password", "role", "address", "contact"}
+	column := []string{"id", "name", "email", "password", "role", "address", "contact", "is_active"}
 	query := config.InsertQuery("users", column)
 	//query := `INSERT INTO users (id, name, email, password, role, address, contact, latitude, longitude)
 	//          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	_, err := repo.db.Exec(query, user.ID, user.Name, user.Email, user.Password, user.Role, user.Address, user.Contact)
+	_, err := repo.db.Exec(query, user.ID, user.Name, user.Email, user.Password, user.Role, user.Address, user.Contact, true)
 	return err
 }
 
 func (repo *UserRepository) GetUserByEmail(email string) (*model.User, error) {
-	column := []string{"id", "name", "email", "password", "role", "address", "contact"}
+	column := []string{"id", "name", "email", "password", "role", "address", "contact", "is_active"}
 	query := config.SelectQuery("users", "email", "", column)
 	//query := `SELECT id, name, email, password, role, address, contact, latitude, longitude FROM users WHERE email = ?`
 	row := repo.db.QueryRow(query, email)
 
 	var user model.User
-	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.Role, &user.Address, &user.Contact)
+	err := row.Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.Role, &user.Address, &user.Contact, &user.IsActive)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("user not found")
@@ -72,4 +72,12 @@ func (repo *UserRepository) GetUserByID(userID string) (*model.User, error) {
 	}
 
 	return &user, nil
+}
+
+func (repo *UserRepository) DeActivateUser(userID string) error {
+	column := []string{"is_active"}
+	query := config.UpdateQuery("users", "id", "", column)
+	//query := `UPDATE users SET name=?, email=?, password=?, role=?, address=?, contact=?, latitude=?, longitude=? WHERE id=?`
+	_, err := repo.db.Exec(query, false, userID)
+	return err
 }

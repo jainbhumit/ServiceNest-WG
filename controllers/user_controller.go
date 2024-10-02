@@ -39,7 +39,7 @@ func (u *UserController) LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 	var err error
 	if err = json.NewDecoder(r.Body).Decode(&userInput); err != nil {
-		response.ErrorResponse(w, http.StatusBadRequest, "Invalid input")
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid input", 1001)
 		http.Error(w, "Invalid input", http.StatusBadRequest)
 		return
 	}
@@ -47,7 +47,7 @@ func (u *UserController) LoginUser(w http.ResponseWriter, r *http.Request) {
 	err = validate.Struct(userInput)
 	if err != nil {
 		logger.Error("Validation error", nil)
-		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
 		return
 	}
 
@@ -56,7 +56,7 @@ func (u *UserController) LoginUser(w http.ResponseWriter, r *http.Request) {
 	user, err = u.userService.CheckUserExists(userInput.Email)
 	if err != nil {
 		logger.Error("Invalid email or password", map[string]interface{}{"email": userInput.Email})
-		response.ErrorResponse(w, http.StatusUnauthorized, "Invalid email or password")
+		response.ErrorResponse(w, http.StatusUnauthorized, "Invalid email or password", 1005)
 		//http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
@@ -64,8 +64,13 @@ func (u *UserController) LoginUser(w http.ResponseWriter, r *http.Request) {
 	// Verify the password
 	if !CheckPassword(userInput.Password, user.Password) {
 		logger.Error("Invalid password", map[string]interface{}{"email": userInput.Email})
-		response.ErrorResponse(w, http.StatusUnauthorized, "Invalid password")
+		response.ErrorResponse(w, http.StatusUnauthorized, "Invalid password", 1005)
 		//http.Error(w, "Invalid password", http.StatusUnauthorized)
+		return
+	}
+	if user.IsActive == false {
+		logger.Error("User is deactivated by admin", map[string]interface{}{"email": userInput.Email})
+		response.ErrorResponse(w, http.StatusUnauthorized, "user Deactivated by admin", 1007)
 		return
 	}
 
@@ -74,7 +79,7 @@ func (u *UserController) LoginUser(w http.ResponseWriter, r *http.Request) {
 	tokenString, err = GenerateJWT(user.ID, user.Role)
 	if err != nil {
 		logger.Error("Error generating token", map[string]interface{}{"email": userInput.Email})
-		response.ErrorResponse(w, http.StatusInternalServerError, "Error generating token")
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error generating token", 1006)
 		//http.Error(w, "Error generating token", http.StatusInternalServerError)
 		return
 	}
@@ -96,13 +101,13 @@ func (u *UserController) SignupUser(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
 		logger.Error("Invalid input", nil)
-		response.ErrorResponse(w, http.StatusBadRequest, "Invalid input")
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid input", 1001)
 		return
 	}
 	err := validate.Struct(newUser)
 	if err != nil {
 		logger.Error("Validation error", nil)
-		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body")
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
 		return
 	}
 	// Check if user already exists
@@ -110,7 +115,7 @@ func (u *UserController) SignupUser(w http.ResponseWriter, r *http.Request) {
 
 	if exists != nil && err == nil {
 		logger.Error("User already exists", map[string]interface{}{"email": newUser.Email})
-		response.ErrorResponse(w, http.StatusConflict, "User already exists")
+		response.ErrorResponse(w, http.StatusConflict, "User already exists", 1009)
 		//http.Error(w, "User already exists", http.StatusConflict)
 		return
 	}
@@ -119,7 +124,7 @@ func (u *UserController) SignupUser(w http.ResponseWriter, r *http.Request) {
 	hashedPassword, err := HashPassword(newUser.Password)
 	if err != nil {
 		logger.Error("Error hashing password", map[string]interface{}{"email": newUser.Email})
-		response.ErrorResponse(w, http.StatusInternalServerError, "Error hashing password")
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error hashing password", 1006)
 		//http.Error(w, "Error hashing password", http.StatusInternalServerError)
 		return
 	}
@@ -137,7 +142,7 @@ func (u *UserController) SignupUser(w http.ResponseWriter, r *http.Request) {
 	err = u.userService.CreateUser(user)
 	if err != nil {
 		logger.Error("Error creating user", map[string]interface{}{"email": newUser.Email})
-		response.ErrorResponse(w, http.StatusInternalServerError, "Error creating user")
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error creating user", 1006)
 		//http.Error(w, "Error creating user", http.StatusInternalServerError)
 		return
 	}
@@ -158,7 +163,7 @@ func (u *UserController) ViewProfileByIDHandler(w http.ResponseWriter, r *http.R
 	user, err := u.userService.ViewProfileByID(userID)
 	if err != nil {
 		logger.Error(err.Error(), nil)
-		response.ErrorResponse(w, http.StatusNotFound, "error viewing user")
+		response.ErrorResponse(w, http.StatusNotFound, "error viewing user", 1008)
 		//http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -176,33 +181,33 @@ func (u *UserController) UpdateUserHandler(w http.ResponseWriter, r *http.Reques
 		Email    *string `json:"email"`
 		Password *string `json:"password"`
 		Address  *string `json:"address"`
-		Phone    *string `json:"phone"`
+		Contact  *string `json:"contact"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&updateData); err != nil {
-		response.ErrorResponse(w, http.StatusBadRequest, "Invalid input")
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
 		//http.Error(w, "Invalid input", http.StatusBadRequest)
 		return
 	}
 	err := ValidatePassword(*updateData.Password)
 	if err != nil {
 		logger.Error("Error validating password", map[string]interface{}{"email": *updateData.Email})
-		response.ErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("%v", err))
+		response.ErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("%v", err), 1001)
 		//http.Error(w, fmt.Sprintf("%v", err), http.StatusBadRequest)
 		return
 	}
 	hashedPassword, err := HashPassword(*updateData.Password)
 	if err != nil {
 		logger.Error("Error hashing password", map[string]interface{}{"email": *updateData.Email})
-		response.ErrorResponse(w, http.StatusInternalServerError, "Error hashing password")
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error hashing password", 1006)
 		//http.Error(w, "Error hashing password", http.StatusInternalServerError)
 		return
 	}
 
 	// Call the UserService to update the user profile
-	err = u.userService.UpdateUser(userID, updateData.Email, &hashedPassword, updateData.Address, updateData.Phone)
+	err = u.userService.UpdateUser(userID, updateData.Email, &hashedPassword, updateData.Address, updateData.Contact)
 	if err != nil {
-		response.ErrorResponse(w, http.StatusInternalServerError, "Error updating user")
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error updating user", 1006)
 		//http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

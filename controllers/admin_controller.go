@@ -26,7 +26,7 @@ func (a *AdminController) ViewAllService(w http.ResponseWriter, r *http.Request)
 	services, err := a.adminService.GetAllService()
 	if err != nil {
 		logger.Error("error fetching services", nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, "error fetching services")
+		response.ErrorResponse(w, http.StatusInternalServerError, "error fetching services", 1003)
 		return
 	}
 
@@ -47,7 +47,7 @@ func (a *AdminController) DeleteService(w http.ResponseWriter, r *http.Request) 
 	err := a.adminService.DeleteService(serviceID)
 	if err != nil {
 		logger.Error("error deleting service", nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, "Error deleting service")
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error deleting service", 1006)
 		return
 	}
 
@@ -60,7 +60,7 @@ func (a *AdminController) ViewReports(w http.ResponseWriter, r *http.Request) {
 	reports, err := a.adminService.ViewReports()
 	if err != nil {
 		logger.Error("error fetching reports", nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, "Error generating reports")
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error generating reports", 1006)
 		return
 	}
 
@@ -80,7 +80,7 @@ func (a *AdminController) DeactivateUserAccount(w http.ResponseWriter, r *http.R
 	err := a.adminService.DeactivateAccount(providerID)
 	if err != nil {
 		logger.Error("error deactivating account", nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, "Error deactivating account")
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error deactivating account", 1006)
 		return
 	}
 

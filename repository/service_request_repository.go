@@ -21,7 +21,7 @@ func NewServiceRequestRepository(db *sql.DB) interfaces.ServiceRequestRepository
 
 // SaveServiceRequest saves a service request to the MySQL database
 func (repo *ServiceRequestRepository) SaveServiceRequest(request model.ServiceRequest) error {
-	column := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
+	column := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status", "service_name"}
 	query := config.InsertQuery("service_requests", column)
 	//query := `
 	//	INSERT INTO service_requests
@@ -29,7 +29,7 @@ func (repo *ServiceRequestRepository) SaveServiceRequest(request model.ServiceRe
 	//	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	//`
 
-	_, err := repo.db.Exec(query, request.ID, request.HouseholderID, request.HouseholderName, request.HouseholderAddress, request.ServiceID, request.RequestedTime, request.ScheduledTime, request.Status, request.ApproveStatus)
+	_, err := repo.db.Exec(query, request.ID, request.HouseholderID, request.HouseholderName, request.HouseholderAddress, request.ServiceID, request.RequestedTime, request.ScheduledTime, request.Status, request.ApproveStatus, request.ServiceName)
 	return err
 }
 
@@ -78,7 +78,7 @@ func (repo *ServiceRequestRepository) GetServiceRequestByID(requestID string) (*
 }
 
 func (repo *ServiceRequestRepository) GetServiceRequestsByHouseholderID(householderID string) ([]model.ServiceRequest, error) {
-	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
+	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status", "service_name"}
 	secondTableColumn := []string{"service_provider_id", "name", "contact", "address", "price", "rating", "approve"}
 	query := config.SelectLeftJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "service_requests.householder_id", firstTableColumn, secondTableColumn)
 
@@ -111,11 +111,12 @@ func (repo *ServiceRequestRepository) GetServiceRequestsByHouseholderID(househol
 		var providerPrice sql.NullString
 		var providerRating sql.NullFloat64
 		var providerApprove sql.NullBool
+		var ServiceName sql.NullString
 
 		// Scan the row data
 		err := rows.Scan(
 			&request.ID, &request.HouseholderID, &request.HouseholderName, &request.HouseholderAddress,
-			&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus,
+			&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus, &ServiceName,
 			&providerID, &providerName, &providerContact, &providerAddress, &providerPrice, &providerRating,
 			&providerApprove,
 		)
@@ -149,6 +150,9 @@ func (repo *ServiceRequestRepository) GetServiceRequestsByHouseholderID(househol
 		}
 
 		// Append the request to the slice
+		if ServiceName.Valid {
+			request.ServiceName = ServiceName.String
+		}
 		requests = append(requests, request)
 	}
 
@@ -174,7 +178,7 @@ func (repo *ServiceRequestRepository) UpdateServiceRequest(updatedRequest *model
 
 // GetAllServiceRequests retrieves all service requests from MySQL
 func (repo *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRequest, error) {
-	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
+	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status", "service_name"}
 	secondTableColumn := []string{"service_provider_id", "name", "contact", "address", "price", "rating", "approve"}
 	query := config.SelectLeftJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "", firstTableColumn, secondTableColumn)
 
@@ -201,10 +205,11 @@ func (repo *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRe
 		var providerID, providerName, providerContact, providerAddress, providerPrice sql.NullString
 		var providerRating sql.NullFloat64
 		var providerApprove sql.NullBool
+		var ServiceName sql.NullString
 
 		err := rows.Scan(
 			&request.ID, &request.HouseholderID, &request.HouseholderName, &request.HouseholderAddress,
-			&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus,
+			&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus, &ServiceName,
 			&providerID, &providerName, &providerContact, &providerAddress, &providerPrice,
 			&providerRating, &providerApprove,
 		)
@@ -251,7 +256,9 @@ func (repo *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRe
 		if providerID.Valid {
 			request.ProviderDetails = append(request.ProviderDetails, provider)
 		}
-
+		if ServiceName.Valid {
+			request.ServiceName = ServiceName.String
+		}
 		requests = append(requests, request)
 	}
 

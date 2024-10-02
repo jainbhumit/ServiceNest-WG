@@ -14,7 +14,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authorizationHeader := r.Header.Get("Authorization")
 		if authorizationHeader == "" {
-			http.Error(w, "Missing token", http.StatusUnauthorized)
+			response.ErrorResponse(w, http.StatusUnauthorized, "Missing token", 1002)
 			return
 		}
 
@@ -24,25 +24,25 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		// Verify JWT token
 		token, err := util.VerifyJWT(tokenString)
 		if err != nil {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			response.ErrorResponse(w, http.StatusUnauthorized, "Invalid token", 1002)
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok || !token.Valid {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			response.ErrorResponse(w, http.StatusUnauthorized, "Invalid token", 1002)
 			return
 		}
 
 		userID, ok := claims["user_id"].(string)
 		if !ok {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			response.ErrorResponse(w, http.StatusUnauthorized, "Invalid token", 1002)
 			return
 		}
 
 		role, ok := claims["role"].(string)
 		if !ok {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			response.ErrorResponse(w, http.StatusUnauthorized, "Invalid token", 1002)
 			return
 		}
 
@@ -60,7 +60,7 @@ func HouseHolderAuthMiddleware(next http.Handler) http.Handler {
 		role := r.Context().Value("role").(string)
 		if role != "Householder" {
 			logger.Error("Invalid role", nil)
-			response.ErrorResponse(w, http.StatusUnauthorized, "Invalid role")
+			response.ErrorResponse(w, http.StatusUnauthorized, "Invalid role", 1007)
 
 			return
 		}
@@ -72,9 +72,10 @@ func ServiceProviderAuthMiddleware(next http.Handler) http.Handler {
 		role := r.Context().Value("role").(string)
 		if role != "ServiceProvider" {
 			logger.Error("Invalid role", nil)
-			response.ErrorResponse(w, http.StatusUnauthorized, "Invalid role")
+			response.ErrorResponse(w, http.StatusUnauthorized, "Invalid role", 1007)
 			return
 		}
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -84,7 +85,7 @@ func AdminAuthMiddleware(next http.Handler) http.Handler {
 		role := r.Context().Value("role").(string)
 		if role != "Admin" {
 			logger.Error("Invalid role", nil)
-			response.ErrorResponse(w, http.StatusUnauthorized, "Invalid role")
+			response.ErrorResponse(w, http.StatusUnauthorized, "Invalid role", 1007)
 			return
 		}
 		next.ServeHTTP(w, r)

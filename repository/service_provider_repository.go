@@ -107,6 +107,7 @@ func (repo *ServiceProviderRepository) UpdateServiceProvider(provider *model.Ser
 	//`
 	_, err := repo.Collection.Exec(query, provider.Rating, provider.Availability, provider.IsActive, provider.ID)
 	return err
+
 }
 
 func (repo *ServiceProviderRepository) GetProviderDetailByID(providerID string) (*model.ServiceProviderDetails, error) {

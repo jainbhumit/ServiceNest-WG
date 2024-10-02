@@ -90,7 +90,7 @@ func (s *UserService) CheckUserExists(email string) (*model.User, error) {
 }
 
 func (s *UserService) CreateUser(user *model.User) error {
-	user.ID = util.GenerateUUID()
+	user.ID = GetUniqueID()
 	err := s.userRepo.SaveUser(user)
 	if err != nil {
 		return fmt.Errorf("could not save user: %v", err)

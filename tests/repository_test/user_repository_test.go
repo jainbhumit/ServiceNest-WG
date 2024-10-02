@@ -2,6 +2,7 @@ package repository_test
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"serviceNest/model"
@@ -20,7 +21,7 @@ func TestSaveUser(t *testing.T) {
 
 	// Step 3: Define the mock behavior for the INSERT INTO users query
 	mock.ExpectExec("INSERT INTO users").
-		WithArgs("123", "John Doe", "john@example.com", "hashed_password", "Householder", "123 Main St", "1234567890").
+		WithArgs("123", "John Doe", "john@example.com", "hashed_password", "Householder", "123 Main St", "1234567890", true).
 		WillReturnResult(sqlmock.NewResult(1, 1)) // Simulate successful insert
 
 	// Step 4: Define the user object that we want to save
@@ -32,6 +33,7 @@ func TestSaveUser(t *testing.T) {
 		Role:     "Householder",
 		Address:  "123 Main St",
 		Contact:  "1234567890",
+		IsActive: true,
 	}
 
 	// Step 5: Call the SaveUser method from the repository
@@ -55,8 +57,8 @@ func TestGetUserByEmail(t *testing.T) {
 	repo := repository.NewUserRepository(db)
 
 	// Mock row returned by query
-	rows := sqlmock.NewRows([]string{"id", "name", "email", "password", "role", "address", "contact"}).
-		AddRow("123", "John Doe", "john@example.com", "hashed_password", "user", "123 Main St", "1234567890")
+	rows := sqlmock.NewRows([]string{"id", "name", "email", "password", "role", "address", "contact", "is_active"}).
+		AddRow("123", "John Doe", "john@example.com", "hashed_password", "user", "123 Main St", "1234567890", true)
 
 	// Expect the query with the provided email
 	mock.ExpectQuery("SELECT id, name, email, password").
@@ -190,6 +192,69 @@ func TestGetUserByID_UserNotFound(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, user)
 	assert.EqualError(t, err, "user not found")
+
+	// Ensure all expectations were met
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+func TestDeActivateUser_Success(t *testing.T) {
+	// Create a new sqlmock database connection
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	// Initialize the repository
+	repo := repository.NewUserRepository(db)
+
+	// Prepare the query and expectations (include spaces around the `=`)
+	query := `UPDATE users SET is_active = \? WHERE id = \?`
+	mock.ExpectExec(query).
+		WithArgs(false, "123").
+		WillReturnResult(sqlmock.NewResult(1, 1)) // simulate a successful update
+
+	// Call DeActivateUser and assert no error
+	err = repo.DeActivateUser("123")
+	assert.NoError(t, err)
+
+	// Ensure all expectations were met
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestDeActivateUser_UserNotFound(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewUserRepository(db)
+
+	// Expect the query with flexible whitespace matching
+	mock.ExpectExec(`UPDATE users SET is_active\s*=\s*\? WHERE id\s*=\s*\?`).
+		WithArgs(false, "123").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	// Call DeActivateUser and assert no errors
+	err = repo.DeActivateUser("123")
+	assert.NoError(t, err)
+
+	// Ensure all expectations were met
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestDeActivateUser_DBError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewUserRepository(db)
+
+	// Expect an Exec query with flexible whitespace matching and force it to return an error
+	mock.ExpectExec(`UPDATE users SET is_active\s*=\s*\? WHERE id\s*=\s*\?`).
+		WithArgs(false, "123").
+		WillReturnError(fmt.Errorf("some db error"))
+
+	// Call DeActivateUser and check for the expected error
+	err = repo.DeActivateUser("123")
+	assert.Error(t, err)
+	assert.EqualError(t, err, "some db error")
 
 	// Ensure all expectations were met
 	assert.NoError(t, mock.ExpectationsWereMet())

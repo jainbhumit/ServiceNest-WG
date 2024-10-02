@@ -8,6 +8,5 @@ type User struct {
 	Role     string `json:"role" bson:"role"` // Householder or ServiceProvider
 	Address  string `json:"address" bson:"address"`
 	Contact  string `json:"contact" bson:"contact"`
-	//Latitude  float64 `json:"latitude" bson:"latitude"`
-	//Longitude float64 `json:"longitude" bson:"longitude"`
+	IsActive bool   `json:"is_active"`
 }

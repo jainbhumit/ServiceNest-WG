@@ -101,8 +101,10 @@ func TestAdminController_ViewAllService_Error(t *testing.T) {
 
 	// Assert the body contains the expected services
 	expected := `{
-        "message": "error fetching services",
-        "status": "Fail"
+		"status": "Fail",
+		"error_code":1003,
+        "message": "error fetching services"
+        
     }`
 
 	// Assert the body contains the expected services
@@ -292,6 +294,6 @@ func TestAdminController_DeactivateUserAccount_Error(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 
 	// Assert the body contains success message
-	expected := `{"message":"Error deactivating account","status":"Fail"}`
+	expected := `{"message":"Error deactivating account","status":"Fail","error_code":1006}`
 	assert.JSONEq(t, expected, rr.Body.String())
 }

@@ -6,10 +6,10 @@ import (
 )
 
 type Response struct {
-	Status  string      `json:"status"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-	//ErrorCode int         `json:"error_code,omitempty"`
+	Status    string      `json:"status"`
+	Message   string      `json:"message"`
+	ErrorCode int         `json:"error_code,omitempty"`
+	Data      interface{} `json:"data,omitempty"`
 }
 
 // SuccessResponse generates a standard success response
@@ -25,11 +25,11 @@ func SuccessResponse(w http.ResponseWriter, data interface{}, message string, co
 }
 
 // ErrorResponse generates a standard error response
-func ErrorResponse(w http.ResponseWriter, statusCode int, errMessage string) {
+func ErrorResponse(w http.ResponseWriter, statusCode int, errMessage string, code int) {
 	response := Response{
-		Status: "Fail",
-		//ErrorCode: code,
-		Message: errMessage,
+		Status:    "Fail",
+		ErrorCode: code,
+		Message:   errMessage,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)

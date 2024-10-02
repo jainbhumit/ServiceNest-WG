@@ -304,7 +304,7 @@ func TestAcceptServiceRequest_InvalidBody(t *testing.T) {
 		// Optionally check for other fields in the response if needed
 		assert.Nil(t, resp["data"]) // Assuming data might be present, even in error
 	})
-	
+
 }
 func TestViewApprovedRequests_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -754,6 +754,6 @@ func TestViewReviewsError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 
 	// Check the response body
-	expectedJSON := `{"message":"Failed to fetch reviews","status":"Fail"}`
+	expectedJSON := `{"error_code":1003,"message":"Failed to fetch reviews","status":"Fail"}`
 	assert.JSONEq(t, expectedJSON, rr.Body.String())
 }

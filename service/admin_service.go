@@ -42,7 +42,11 @@ func (s *AdminService) DeactivateAccount(userID string) error {
 	}
 
 	provider.IsActive = false
-	return s.providerRepo.UpdateServiceProvider(provider)
+	err = s.providerRepo.UpdateServiceProvider(provider)
+	if err != nil {
+		return err
+	}
+	return s.userRepo.DeActivateUser(userID)
 }
 
 func (s *AdminService) GetAllService() ([]model.Service, error) {
