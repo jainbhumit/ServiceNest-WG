@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"net/http"
 	"regexp"
 	"strconv"
 	"unicode"
@@ -62,4 +63,43 @@ func ValidatePhoneNumber(phone string) error {
 
 	return nil
 
+}
+func ApplyPagination[T any](data []T, limit, offset int) []T {
+	// Ensure offset is within bounds
+	if offset > len(data) {
+		return []T{} // Return empty slice if offset is out of range
+	}
+
+	// Calculate the end index based on limit
+	end := offset + limit
+	if end > len(data) {
+		end = len(data) // Ensure we don't go beyond the slice bounds
+	}
+
+	return data[offset:end]
+}
+func GetPaginationParams(r *http.Request) (int, int) {
+	// Get limit and offset from query parameters
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+
+	// Set default values
+	limit := 10 // default limit
+	offset := 0 // default offset
+
+	// Parse limit if it's provided
+	if limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+
+	// Parse offset if it's provided
+	if offsetStr != "" {
+		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
+			offset = parsedOffset
+		}
+	}
+
+	return limit, offset
 }

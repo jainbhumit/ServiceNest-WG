@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/fatih/color"
 	"serviceNest/interfaces"
 	"serviceNest/model"
 )
@@ -15,7 +14,7 @@ type ServiceProviderService struct {
 }
 
 // NewServiceProviderService initializes a new ServiceProviderService
-func NewServiceProviderService(serviceProviderRepo interfaces.ServiceProviderRepository, serviceRequestRepo interfaces.ServiceRequestRepository, serviceRepo interfaces.ServiceRepository) *ServiceProviderService {
+func NewServiceProviderService(serviceProviderRepo interfaces.ServiceProviderRepository, serviceRequestRepo interfaces.ServiceRequestRepository, serviceRepo interfaces.ServiceRepository) interfaces.ServiceProviderService {
 	return &ServiceProviderService{
 		serviceProviderRepo: serviceProviderRepo,
 		serviceRequestRepo:  serviceRequestRepo,
@@ -67,7 +66,7 @@ func (s *ServiceProviderService) RemoveService(providerID, serviceID string) err
 	return nil
 }
 
-func (s *ServiceProviderService) AcceptServiceRequest(providerID, requestID string) error {
+func (s *ServiceProviderService) AcceptServiceRequest(providerID, requestID string, estimatedPrice string) error {
 	serviceRequest, err := s.serviceRequestRepo.GetServiceRequestByID(requestID)
 	if err != nil {
 		return err
@@ -90,9 +89,6 @@ func (s *ServiceProviderService) AcceptServiceRequest(providerID, requestID stri
 		return err
 	}
 	provider.ServiceProviderID = providerID
-	var estimatedPrice string
-	color.Cyan("Enter the Price for service:")
-	fmt.Scanln(&estimatedPrice)
 
 	provider.Price = estimatedPrice
 
@@ -173,7 +169,7 @@ func (s *ServiceProviderService) GetServiceByID(serviceID string) (*model.Servic
 	return s.serviceRepo.GetServiceByID(serviceID)
 }
 
-func (s *ServiceProviderService) ViewApprovedRequestsByHouseholder(providerID string) ([]model.ServiceRequest, error) {
+func (s *ServiceProviderService) ViewApprovedRequestsByProvider(providerID string) ([]model.ServiceRequest, error) {
 	// Fetch all service requests related to the provider
 	serviceRequests, err := s.serviceRequestRepo.GetServiceRequestsByProviderID(providerID)
 	if err != nil {

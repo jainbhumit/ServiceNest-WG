@@ -22,6 +22,6 @@ type ServiceProviderDetails struct {
 	Address           string   `json:"address" bson:"address"`
 	Price             string   `json:"price" bson:"price"`
 	Rating            float64  `json:"rating" bson:"rating"`
-	Reviews           []Review `json:"reviews" bson:"reviews"`
+	Reviews           []Review `json:"reviews,omitempty" bson:"reviews"`
 	Approve           bool     `json:"approve" bson:"approve"`
 }

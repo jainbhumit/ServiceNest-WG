@@ -9,4 +9,5 @@ type UserRepository interface {
 	GetUserByID(userID string) (*model.User, error)
 	UpdateUser(updatedUser *model.User) error
 	GetUserByEmail(email string) (*model.User, error)
+	DeActivateUser(userID string) error
 }

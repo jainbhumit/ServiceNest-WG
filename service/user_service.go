@@ -12,7 +12,7 @@ type UserService struct {
 	userRepo interfaces.UserRepository
 }
 
-func NewUserService(userRepo interfaces.UserRepository) *UserService {
+func NewUserService(userRepo interfaces.UserRepository) interfaces.UserService {
 	return &UserService{userRepo: userRepo}
 }
 
@@ -78,5 +78,22 @@ func (s *UserService) UpdateUser(userID string, newEmail, newPassword, newAddres
 		return fmt.Errorf("could not update user: %v", err)
 	}
 
+	return nil
+}
+
+func (s *UserService) CheckUserExists(email string) (*model.User, error) {
+	user, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return nil, fmt.Errorf("could not find user: %v", err)
+	}
+	return user, nil
+}
+
+func (s *UserService) CreateUser(user *model.User) error {
+	user.ID = GetUniqueID()
+	err := s.userRepo.SaveUser(user)
+	if err != nil {
+		return fmt.Errorf("could not save user: %v", err)
+	}
 	return nil
 }
