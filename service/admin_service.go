@@ -6,25 +6,22 @@ import (
 )
 
 type AdminService struct {
-	serviceRepo     interfaces.ServiceRepository
-	userRepo        interfaces.UserRepository
-	householderRepo interfaces.HouseholderRepository
-	//serviceAreaRepo *repository_test.ServiceAreaRepository
+	serviceRepo        interfaces.ServiceRepository
+	userRepo           interfaces.UserRepository
+	householderRepo    interfaces.HouseholderRepository
 	providerRepo       interfaces.ServiceProviderRepository
 	serviceRequestRepo interfaces.ServiceRequestRepository
 }
 
 func NewAdminService(serviceRepo interfaces.ServiceRepository, serviceRequestRepo interfaces.ServiceRequestRepository, userRepo interfaces.UserRepository, providerRepo interfaces.ServiceProviderRepository) interfaces.AdminService {
 	return &AdminService{
-		serviceRepo: serviceRepo,
-		userRepo:    userRepo,
-		//serviceAreaRepo: serviceAreaRepo,
+		serviceRepo:        serviceRepo,
+		userRepo:           userRepo,
 		providerRepo:       providerRepo,
 		serviceRequestRepo: serviceRequestRepo,
 	}
 }
 
-// View reports
 func (s *AdminService) ViewReports() ([]model.ServiceRequest, error) {
 
 	return s.serviceRequestRepo.GetAllServiceRequests()
@@ -34,7 +31,6 @@ func (s *AdminService) DeleteService(serviceID string) error {
 	return s.serviceRepo.RemoveService(serviceID)
 }
 
-// Deactivate account
 func (s *AdminService) DeactivateAccount(userID string) error {
 	provider, err := s.providerRepo.GetProviderByID(userID)
 	if err != nil {

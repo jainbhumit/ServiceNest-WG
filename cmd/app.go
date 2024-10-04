@@ -16,7 +16,7 @@ import (
 //var providerService *service.ServiceProviderService
 //var adminService *service.AdminService
 
-func start(client *sql.DB) {
+func runApp(client *sql.DB) {
 	// initialize all repository
 	userRepo := repository.NewUserRepository(client)
 	householderRepo := repository.NewHouseholderRepository(client)
