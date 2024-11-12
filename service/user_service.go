@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"serviceNest/errs"
 	"serviceNest/interfaces"
 	"serviceNest/model"
 	"serviceNest/util"
@@ -90,10 +91,28 @@ func (s *UserService) CheckUserExists(email string) (*model.User, error) {
 }
 
 func (s *UserService) CreateUser(user *model.User) error {
-	user.ID = GetUniqueID()
+	user.ID = util.GenerateUUID()
 	err := s.userRepo.SaveUser(user)
 	if err != nil {
 		return fmt.Errorf("could not save user: %v", err)
 	}
 	return nil
+}
+
+func (s *UserService) ForgetPasword(email string, answer string, updatedPassword string) error {
+	securityAnswer, err := s.userRepo.GetSecurityAnswerByEmail(email)
+	if err != nil {
+		return err
+	}
+	if *securityAnswer != answer {
+		return fmt.Errorf(errs.IncorrectSecurityAnswer)
+	}
+
+	err = s.userRepo.UpdatePassword(email, updatedPassword)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }

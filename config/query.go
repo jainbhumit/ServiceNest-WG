@@ -37,18 +37,20 @@ func SelectInnerJoinQuery(tableName, joinTable, joinCondition, condition string,
 
 	return query
 }
-func SelectLeftJoinQuery(tableName, joinTable, joinCondition, condition string, firstTableColumns []string, secondTableColumns []string) string {
-	for i, coloumn := range firstTableColumns {
-		firstTableColumns[i] = tableName + "." + coloumn
+func SelectLeftJoinQuery(tableName, joinTable, joinCondition, condition string, firstTableColumns []string, secondTableColumns []string, limit, offset int) string {
+
+	for i, column := range firstTableColumns {
+		firstTableColumns[i] = tableName + "." + column
 	}
 	firstColNames := strings.Join(firstTableColumns, ", ")
-	for i, coloumn := range secondTableColumns {
-		secondTableColumns[i] = joinTable + "." + coloumn
+
+	for i, column := range secondTableColumns {
+		secondTableColumns[i] = joinTable + "." + column
 	}
 	secondColNames := strings.Join(secondTableColumns, ", ")
+
 	query := fmt.Sprintf("SELECT %s, %s FROM %s", firstColNames, secondColNames, tableName)
 
-	// Add INNER JOIN clause
 	if joinTable != "" && joinCondition != "" {
 		query += fmt.Sprintf(" LEFT JOIN %s ON %s", joinTable, joinCondition)
 	}
@@ -57,8 +59,16 @@ func SelectLeftJoinQuery(tableName, joinTable, joinCondition, condition string, 
 		query += fmt.Sprintf(" WHERE %s = ?", condition)
 	}
 
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET %d", offset)
+	}
+
 	return query
 }
+
 func SelectQuery(tableName, condition1, condition2 string, columns []string) string {
 	colNames := strings.Join(columns, ", ")
 	var query string
@@ -119,6 +129,162 @@ func SelectAverageQuery(tableName, column, condition string) string {
 	// Add WHERE clause if a condition is provided
 	if condition != "" {
 		query += fmt.Sprintf(" WHERE %s = ?", condition)
+	}
+
+	return query
+}
+
+func SelectJsonDataQuery() string {
+	return `SELECT
+service_requests.id AS request_id,
+service_requests.householder_id,
+service_requests.householder_name,
+service_requests.householder_address,
+service_requests.service_id,
+service_requests.requested_time,
+service_requests.scheduled_time,
+service_requests.status,
+service_requests.approve_status,
+service_requests.service_name,
+CONCAT(
+'[',
+GROUP_CONCAT(
+JSON_OBJECT(
+'service_provider_id', service_provider_details.service_provider_id,
+'name', service_provider_details.name,
+'contact', service_provider_details.contact,
+'address', service_provider_details.address,
+'price', service_provider_details.price,
+'rating', service_provider_details.rating,
+'approve',service_provider_details.approve
+)
+SEPARATOR ', '
+),
+']'
+) AS provider_details
+FROM
+service_requests
+LEFT JOIN
+service_provider_details ON service_requests.id = service_provider_details.service_request_id
+WHERE
+service_requests.householder_id = ?
+GROUP BY
+service_requests.id
+
+LIMIT ?  OFFSET ?; 
+`
+}
+
+func SelectJsonDataQueryWithApprove() string {
+	return `SELECT
+service_requests.id AS request_id,
+service_requests.householder_id,
+service_requests.householder_name,
+service_requests.householder_address,
+service_requests.service_id,
+service_requests.requested_time,
+service_requests.scheduled_time,
+service_requests.status,
+service_requests.approve_status,
+service_requests.service_name,
+CONCAT(
+'[',
+GROUP_CONCAT(
+JSON_OBJECT(
+'service_provider_id', service_provider_details.service_provider_id,
+'name', service_provider_details.name,
+'contact', service_provider_details.contact,
+'address', service_provider_details.address,
+'price', service_provider_details.price,
+'rating', service_provider_details.rating,
+'approve',service_provider_details.approve
+)
+SEPARATOR ', '
+),
+']'
+) AS provider_details
+FROM
+service_requests
+LEFT JOIN
+service_provider_details ON service_requests.id = service_provider_details.service_request_id
+WHERE
+service_requests.householder_id = ?
+and service_requests.approve_status = ?
+GROUP BY
+service_requests.id
+
+LIMIT ?  OFFSET ?; 
+`
+}
+
+func ViewPendingRequestByProvider() string {
+	return `
+		SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, 
+		       sr.requested_time, sr.scheduled_time, sr.description, sr.status, sr.approve_status, sr.service_name
+		FROM service_requests sr
+		LEFT JOIN service_provider_details spd 
+		ON sr.id = spd.service_request_id AND spd.service_provider_id = ?
+		WHERE spd.service_request_id IS NULL
+		LIMIT ? OFFSET ?;
+	`
+}
+
+func SelectInnerJoinQueryPaginate(tableName, joinTable, joinCondition, condition string, firstTableColumns []string, secondTableColumns []string, limit, offset int) string {
+	for i, coloumn := range firstTableColumns {
+		firstTableColumns[i] = tableName + "." + coloumn
+	}
+	firstColNames := strings.Join(firstTableColumns, ", ")
+	var secondColNames string
+	if len(secondTableColumns) > 0 {
+		for i, coloumn := range secondTableColumns {
+			secondTableColumns[i] = joinTable + "." + coloumn
+		}
+		secondColNames = strings.Join(secondTableColumns, ", ")
+	}
+	var query string
+	if len(secondTableColumns) > 0 {
+		query = fmt.Sprintf("SELECT %s, %s FROM %s", firstColNames, secondColNames, tableName)
+	} else {
+		query = fmt.Sprintf("SELECT %s FROM %s", firstColNames, tableName)
+	}
+
+	// Add INNER JOIN clause
+	if joinTable != "" && joinCondition != "" {
+		query += fmt.Sprintf(" INNER JOIN %s ON %s", joinTable, joinCondition)
+	} else if joinCondition == "" {
+		query += fmt.Sprintf(" INNER JOIN %s", joinTable)
+	}
+
+	if condition != "" {
+		query += fmt.Sprintf(" WHERE %s = ?", condition)
+	}
+
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET %d", offset)
+	}
+	return query
+}
+
+func SelectQueryWithLimit(tableName, condition1, condition2 string, columns []string, limit, offset int) string {
+	colNames := strings.Join(columns, ", ")
+	var query string
+	if condition1 == "" && condition2 == "" {
+		query = fmt.Sprintf("SELECT %s FROM %s", colNames, tableName)
+	}
+	if condition1 != "" && condition2 == "" {
+		query = fmt.Sprintf("SELECT %s FROM %s WHERE %s = ?", colNames, tableName, condition1)
+	}
+	if condition1 != "" && condition2 != "" {
+		query = fmt.Sprintf("SELECT %s FROM %s WHERE %s = ? AND %s = ?", colNames, tableName, condition1, condition2)
+	}
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET %d", offset)
 	}
 
 	return query

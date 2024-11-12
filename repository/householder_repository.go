@@ -21,7 +21,6 @@ func NewHouseholderRepository(client *sql.DB) interfaces.HouseholderRepository {
 func (repo *MySQLHouseholderRepository) SaveHouseholder(householder *model.Householder) error {
 	column := []string{"id", "name", "email", "password", "role", "address", "contact"}
 	query := config.InsertQuery("users", column)
-	//query := "INSERT INTO users (id, name, email, password, role, address, contact, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
 	_, err := repo.db.Exec(query, householder.ID, householder.Name, householder.Email, householder.Password, householder.Role, householder.Address, householder.Contact)
 	return err
 }
@@ -29,7 +28,6 @@ func (repo *MySQLHouseholderRepository) SaveHouseholder(householder *model.House
 func (repo *MySQLHouseholderRepository) GetHouseholderByID(id string) (*model.Householder, error) {
 	column := []string{"id", "name", "email", "password", "role", "address", "contact"}
 	query := config.SelectQuery("users", "id", "", column)
-	//query := "SELECT id, name, email, password, role, address, contact FROM users WHERE id = ?"
 	row := repo.db.QueryRow(query, id)
 
 	var householder model.Householder

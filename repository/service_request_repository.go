@@ -2,9 +2,11 @@ package repository
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"serviceNest/config"
+	"serviceNest/errs"
 	"serviceNest/interfaces"
 	"serviceNest/model"
 	"serviceNest/util"
@@ -21,15 +23,10 @@ func NewServiceRequestRepository(db *sql.DB) interfaces.ServiceRequestRepository
 
 // SaveServiceRequest saves a service request to the MySQL database
 func (repo *ServiceRequestRepository) SaveServiceRequest(request model.ServiceRequest) error {
-	column := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status", "service_name"}
+	column := []string{"id", "householder_id", "householder_name", "householder_address", "householder_contact", "service_id", "requested_time", "scheduled_time", "status", "approve_status", "service_name", "description"}
 	query := config.InsertQuery("service_requests", column)
-	//query := `
-	//	INSERT INTO service_requests
-	//	(id, householder_id, householder_name, householder_address, service_id, requested_time, scheduled_time, status, approve_status)
-	//	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	//`
 
-	_, err := repo.db.Exec(query, request.ID, request.HouseholderID, request.HouseholderName, request.HouseholderAddress, request.ServiceID, request.RequestedTime, request.ScheduledTime, request.Status, request.ApproveStatus, request.ServiceName)
+	_, err := repo.db.Exec(query, request.ID, request.HouseholderID, request.HouseholderName, request.HouseholderAddress, request.HouseholderContact, request.ServiceID, request.RequestedTime, request.ScheduledTime, request.Status, request.ApproveStatus, request.ServiceName, request.Description)
 	return err
 }
 
@@ -38,14 +35,6 @@ func (repo *ServiceRequestRepository) GetServiceRequestByID(requestID string) (*
 	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
 	secondTableColumn := []string{"name"}
 	query := config.SelectInnerJoinQuery("service_requests", "services", "service_requests.service_id = services.id", "service_requests.id", firstTableColumn, secondTableColumn)
-
-	//query := `
-	//	SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id,
-	//	       sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status ,s.name as service_name,
-	//	FROM service_requests sr
-	//	INNER JOIN services s ON sr.service_id = s.id
-	//	WHERE sr.id = ?
-	//`
 
 	var request model.ServiceRequest
 	var requestedTime []uint8
@@ -58,7 +47,7 @@ func (repo *ServiceRequestRepository) GetServiceRequestByID(requestID string) (*
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("service request not found")
+			return nil, errors.New(errs.ServiceRequestNotFound)
 		}
 		return nil, err
 	}
@@ -66,32 +55,21 @@ func (repo *ServiceRequestRepository) GetServiceRequestByID(requestID string) (*
 	// Parse the times
 	request.RequestedTime, err = util.ParseTime(requestedTime)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing requested_time: %v", err)
+		return nil, fmt.Errorf("%v: %v", errs.ErrorParsingRequestTime, err)
 	}
 
 	request.ScheduledTime, err = util.ParseTime(scheduledTime)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing scheduled_time: %v", err)
+		return nil, fmt.Errorf("%v: %v", errs.ErrorParsingScheduleTime, err)
 	}
 
 	return &request, nil
 }
 
-func (repo *ServiceRequestRepository) GetServiceRequestsByHouseholderID(householderID string) ([]model.ServiceRequest, error) {
-	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status", "service_name"}
-	secondTableColumn := []string{"service_provider_id", "name", "contact", "address", "price", "rating", "approve"}
-	query := config.SelectLeftJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "service_requests.householder_id", firstTableColumn, secondTableColumn)
+func (repo *ServiceRequestRepository) GetServiceRequestsByHouseholderID(householderID string, limit, offset int) ([]model.ServiceRequest, error) {
+	query := config.SelectJsonDataQuery()
 
-	//query := `
-	//	SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id,
-	//	       sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status, spd.service_provider_id, spd.name,
-	//	       spd.contact, spd.address, spd.price, spd.rating, spd.approve
-	//	FROM service_requests AS sr
-	//	LEFT JOIN service_provider_details AS spd ON sr.id = spd.service_request_id
-	//	WHERE householder_id = ?
-	//`
-
-	rows, err := repo.db.Query(query, householderID)
+	rows, err := repo.db.Query(query, householderID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -100,63 +78,56 @@ func (repo *ServiceRequestRepository) GetServiceRequestsByHouseholderID(househol
 	var requests []model.ServiceRequest
 	for rows.Next() {
 		var request model.ServiceRequest
-		var requestedTime []uint8
-		var scheduledTime []uint8
+		var requestedTime, scheduledTime []uint8
+		var providerDetailsJSON sql.NullString
+		var householderID sql.NullString
+		var householderAddress sql.NullString
+		var serviceName sql.NullString
 
-		// Using sql.NullString and sql.NullFloat64 for nullable columns
-		var providerID sql.NullString
-		var providerName sql.NullString
-		var providerContact sql.NullString
-		var providerAddress sql.NullString
-		var providerPrice sql.NullString
-		var providerRating sql.NullFloat64
-		var providerApprove sql.NullBool
-		var ServiceName sql.NullString
-
-		// Scan the row data
 		err := rows.Scan(
-			&request.ID, &request.HouseholderID, &request.HouseholderName, &request.HouseholderAddress,
-			&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus, &ServiceName,
-			&providerID, &providerName, &providerContact, &providerAddress, &providerPrice, &providerRating,
-			&providerApprove,
+			&request.ID, &householderID, &request.HouseholderName, &householderAddress,
+			&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus, &serviceName,
+			&providerDetailsJSON,
 		)
 		if err != nil {
 			return nil, err
 		}
 
+		// Assign nullable values
+		if householderID.Valid {
+			request.HouseholderID = &householderID.String
+		}
+		if householderAddress.Valid {
+			request.HouseholderAddress = &householderAddress.String
+		}
+		if serviceName.Valid {
+			request.ServiceName = serviceName.String
+		}
+
 		// Parse the requested and scheduled times
 		request.RequestedTime, err = util.ParseTime(requestedTime)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing requested_time: %v", err)
+			return nil, fmt.Errorf("error parsing requested time: %v", err)
 		}
-
 		request.ScheduledTime, err = util.ParseTime(scheduledTime)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing scheduled_time: %v", err)
+			return nil, fmt.Errorf("error parsing scheduled time: %v", err)
 		}
 
-		// Check if provider details are valid (non-NULL)
-		if providerID.Valid {
-			provider := model.ServiceProviderDetails{
-				ServiceProviderID: providerID.String,
-				Name:              providerName.String,
-				Contact:           providerContact.String,
-				Address:           providerAddress.String,
-				Price:             providerPrice.String,
-				Rating:            providerRating.Float64,
-				Approve:           providerApprove.Bool,
+		// Parse the JSON data for provider details
+		if providerDetailsJSON.Valid {
+			var providerDetails []model.ServiceProviderDetails
+			err = json.Unmarshal([]byte(providerDetailsJSON.String), &providerDetails)
+			if err != nil {
+				return nil, fmt.Errorf("error parsing provider details JSON: %v", err)
 			}
-			request.ProviderDetails = append(request.ProviderDetails, provider)
+			request.ProviderDetails = providerDetails
 		}
 
-		// Append the request to the slice
-		if ServiceName.Valid {
-			request.ServiceName = ServiceName.String
-		}
 		requests = append(requests, request)
 	}
 
-	// Check for errors during iteration
+	// Check for any errors encountered during iteration
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -177,17 +148,10 @@ func (repo *ServiceRequestRepository) UpdateServiceRequest(updatedRequest *model
 }
 
 // GetAllServiceRequests retrieves all service requests from MySQL
-func (repo *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRequest, error) {
+func (repo *ServiceRequestRepository) GetAllServiceRequests(limit, offset int) ([]model.ServiceRequest, error) {
 	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status", "service_name"}
 	secondTableColumn := []string{"service_provider_id", "name", "contact", "address", "price", "rating", "approve"}
-	query := config.SelectLeftJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "", firstTableColumn, secondTableColumn)
-
-	//query := `
-	//	SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status,
-	//	       spd.service_provider_id, spd.name, spd.contact, spd.address, spd.price, spd.rating, spd.approve
-	//	FROM service_requests AS sr
-	//	LEFT JOIN service_provider_details AS spd ON sr.id = spd.service_request_id
-	//`
+	query := config.SelectLeftJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "", firstTableColumn, secondTableColumn, limit, offset)
 
 	rows, err := repo.db.Query(query)
 	if err != nil {
@@ -220,13 +184,13 @@ func (repo *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRe
 		// Parse the requested_time
 		request.RequestedTime, err = util.ParseTime(requestedTime)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing requested_time: %v", err)
+			return nil, fmt.Errorf("%v: %v", errs.ErrorParsingRequestTime, err)
 		}
 
 		// Parse the scheduled_time
 		request.ScheduledTime, err = util.ParseTime(scheduledTime)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing scheduled_time: %v", err)
+			return nil, fmt.Errorf("%v: %v", errs.ErrorParsingScheduleTime, err)
 		}
 
 		// Assign values to provider struct only if they are not NULL
@@ -249,7 +213,11 @@ func (repo *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRe
 			provider.Rating = providerRating.Float64
 		}
 		if providerApprove.Valid {
-			provider.Approve = providerApprove.Bool
+			if providerApprove.Bool == true {
+				provider.Approve = 1
+			} else {
+				provider.Approve = 0
+			}
 		}
 
 		// Append provider details if a valid provider is found
@@ -271,19 +239,12 @@ func (repo *ServiceRequestRepository) GetAllServiceRequests() ([]model.ServiceRe
 }
 
 // GetServiceRequestsByProviderID retrieves service requests by the provider ID from MySQL
-func (repo *ServiceRequestRepository) GetServiceRequestsByProviderID(providerID string) ([]model.ServiceRequest, error) {
-	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
-	secondTableColumn := []string{"service_provider_id", "name", "contact", "address", "price", "rating", "approve"}
-	query := config.SelectInnerJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "service_provider_details.service_provider_id", firstTableColumn, secondTableColumn)
-
-	//	query := `
-	//	SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status
-	//,spd.service_provider_id,spd.name,spd.contact,spd.address
-	//,spd.price,spd.rating,spd.approve FROM service_requests as sr inner join service_provider_details as spd  on sr.id=spd.service_request_id
-	//		WHERE spd.service_provider_id=?;
-	//	`
-
-	rows, err := repo.db.Query(query, providerID)
+func (repo *ServiceRequestRepository) GetServiceRequestsByProviderID(providerID string, limit, offset int) ([]model.ServiceRequest, error) {
+	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status", "householder_contact", "service_name"}
+	secondTableColumn := []string{}
+	query := config.SelectInnerJoinQueryPaginate("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id AND service_provider_details.service_provider_id = ?", "service_provider_details.approve", firstTableColumn, secondTableColumn, limit, offset)
+	fmt.Println(query)
+	rows, err := repo.db.Query(query, providerID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -298,8 +259,7 @@ func (repo *ServiceRequestRepository) GetServiceRequestsByProviderID(providerID 
 		err := rows.Scan(
 			&request.ID, &request.HouseholderID, &request.HouseholderName, &request.HouseholderAddress,
 			&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus,
-			&provider.ServiceProviderID, &provider.Name, &provider.Contact, &provider.Address, &provider.Price,
-			&provider.Rating, &provider.Approve,
+			&request.HouseholderContact, &request.ServiceName,
 		)
 		if err != nil {
 			return nil, err
@@ -307,13 +267,13 @@ func (repo *ServiceRequestRepository) GetServiceRequestsByProviderID(providerID 
 		// Parse the requested_time
 		request.RequestedTime, err = util.ParseTime(requestedTime)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing requested_time: %v", err)
+			return nil, fmt.Errorf("%v: %v", errs.ErrorParsingRequestTime, err)
 		}
 
 		// Parse the scheduled_time
 		request.ScheduledTime, err = util.ParseTime(scheduledTime)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing scheduled_time: %v", err)
+			return nil, fmt.Errorf("%v: %v", errs.ErrorParsingScheduleTime, err)
 		}
 		request.ProviderDetails = append(request.ProviderDetails, provider)
 		requests = append(requests, request)
@@ -326,12 +286,6 @@ func (repo *ServiceRequestRepository) GetServiceProviderByRequestID(requestID, p
 	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status"}
 	secondTableColumn := []string{"service_provider_id", "name", "contact", "address", "price", "rating", "approve"}
 	query := config.SelectInnerJoinQuery("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id", "service_provider_details.service_provider_id = ? AND service_requests.id", firstTableColumn, secondTableColumn)
-
-	//query := `SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, sr.requested_time, sr.scheduled_time, sr.status, sr.approve_status,
-	//spd.service_provider_id, spd.name, spd.contact, spd.address, spd.price, spd.rating, spd.approve
-	//FROM service_requests AS sr
-	//INNER JOIN service_provider_details AS spd ON sr.id = spd.service_request_id
-	//WHERE spd.service_provider_id = ? AND sr.id = ?`
 
 	rows, err := repo.db.Query(query, providerID, requestID)
 	if err != nil {
@@ -360,13 +314,13 @@ func (repo *ServiceRequestRepository) GetServiceProviderByRequestID(requestID, p
 		// Parse the requested_time
 		request.RequestedTime, err = util.ParseTime(requestedTime)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing requested_time: %v", err)
+			return nil, fmt.Errorf("%v: %v", errs.ErrorParsingRequestTime, err)
 		}
 
 		// Parse the scheduled_time
 		request.ScheduledTime, err = util.ParseTime(scheduledTime)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing scheduled_time: %v", err)
+			return nil, fmt.Errorf("%v: %v", errs.ErrorParsingScheduleTime, err)
 		}
 
 		// Append the provider details
@@ -375,5 +329,124 @@ func (repo *ServiceRequestRepository) GetServiceProviderByRequestID(requestID, p
 		return &request, nil
 	}
 	// If no rows found, return an error
-	return nil, fmt.Errorf("no service request found for request ID: %s and provider ID: %s", requestID, providerID)
+	return nil, fmt.Errorf(errs.NoServiceProviderFoundForRequestId)
+}
+
+func (repo *ServiceRequestRepository) GetApproveServiceRequestsByHouseholderID(householderID string, limit, offset int) ([]model.ServiceRequest, error) {
+	query := config.SelectJsonDataQueryWithApprove()
+
+	rows, err := repo.db.Query(query, householderID, true, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var requests []model.ServiceRequest
+	for rows.Next() {
+		var request model.ServiceRequest
+		var requestedTime, scheduledTime []uint8
+		var providerDetailsJSON sql.NullString
+		var householderID sql.NullString
+		var householderAddress sql.NullString
+		var serviceName sql.NullString
+
+		err := rows.Scan(
+			&request.ID, &householderID, &request.HouseholderName, &householderAddress,
+			&request.ServiceID, &requestedTime, &scheduledTime, &request.Status, &request.ApproveStatus, &serviceName,
+			&providerDetailsJSON,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Assign nullable values
+		if householderID.Valid {
+			request.HouseholderID = &householderID.String
+		}
+		if householderAddress.Valid {
+			request.HouseholderAddress = &householderAddress.String
+		}
+		if serviceName.Valid {
+			request.ServiceName = serviceName.String
+		}
+
+		// Parse the requested and scheduled times
+		request.RequestedTime, err = util.ParseTime(requestedTime)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing requested time: %v", err)
+		}
+		request.ScheduledTime, err = util.ParseTime(scheduledTime)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing scheduled time: %v", err)
+		}
+
+		// Parse the JSON data for provider details
+		if providerDetailsJSON.Valid {
+			var providerDetails []model.ServiceProviderDetails
+			err = json.Unmarshal([]byte(providerDetailsJSON.String), &providerDetails)
+			if err != nil {
+				return nil, fmt.Errorf("error parsing provider details JSON: %v", err)
+			}
+			request.ProviderDetails = providerDetails
+		}
+
+		requests = append(requests, request)
+	}
+
+	// Check for any errors encountered during iteration
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return requests, nil
+}
+
+func (repo *ServiceRequestRepository) GetAllPendingRequestsByProvider(providerId string, limit, offset int) ([]model.ServiceRequest, error) {
+
+	// Update the query to select only service_requests that do not have a matching service_provider_details entry for the given providerId
+	query := config.ViewPendingRequestByProvider()
+
+	// Execute the query with the providerId, limit, and offset parameters
+	rows, err := repo.db.Query(query, providerId, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var requests []model.ServiceRequest
+	for rows.Next() {
+		var requestedTime, scheduledTime []uint8
+		var request model.ServiceRequest
+
+		// Scan data from rows into request fields
+		err := rows.Scan(
+			&request.ID, &request.HouseholderID, &request.HouseholderName, &request.HouseholderAddress,
+			&request.ServiceID, &requestedTime, &scheduledTime, &request.Description,
+			&request.Status, &request.ApproveStatus, &request.ServiceName,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse the requested and scheduled time fields
+		request.RequestedTime, err = util.ParseTime(requestedTime)
+		if err != nil {
+			return nil, fmt.Errorf("%v: %v", errs.ErrorParsingRequestTime, err)
+		}
+
+		request.ScheduledTime, err = util.ParseTime(scheduledTime)
+		if err != nil {
+			return nil, fmt.Errorf("%v: %v", errs.ErrorParsingScheduleTime, err)
+		}
+
+		// Append the parsed request to the list of requests
+		requests = append(requests, request)
+	}
+
+	// Check for any errors encountered during row iteration
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return requests, nil
 }

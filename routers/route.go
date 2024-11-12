@@ -6,6 +6,7 @@ import (
 	"serviceNest/controllers"
 	"serviceNest/interfaces"
 	"serviceNest/middlewares"
+	"serviceNest/response"
 )
 
 func SetupRouter(userService interfaces.UserService, householderService interfaces.HouseholderService, providerService interfaces.ServiceProviderService, adminService interfaces.AdminService) *mux.Router {
@@ -17,6 +18,8 @@ func SetupRouter(userService interfaces.UserService, householderService interfac
 	r.HandleFunc("/signup", userController.SignupUser).Methods("POST")
 
 	r.HandleFunc("/login", userController.LoginUser).Methods("POST")
+
+	r.HandleFunc("/forget", userController.ForgetPasswordHandler).Methods("Put")
 
 	// Protected Routes (JWT authentication required)
 	api := r.PathPrefix("/api").Subrouter()
@@ -30,6 +33,8 @@ func SetupRouter(userService interfaces.UserService, householderService interfac
 
 	// Householder routes connected to admin
 	householderController := controllers.NewHouseholderController(householderService)
+	userRoutes.HandleFunc("/categories", householderController.GetAllServiceCategories).Methods("GET")
+
 	userRoutes.HandleFunc("/services/request", householderController.RequestService).Methods("POST")
 
 	userRoutes.HandleFunc("/services/request", householderController.RescheduleServiceRequest).Methods("PUT")
@@ -71,18 +76,17 @@ func SetupRouter(userService interfaces.UserService, householderService interfac
 		role, ok := r.Context().Value("role").(string)
 		if !ok {
 			// If the role is not present or not a string, return an error
-			http.Error(w, "Unauthorized access - missing or invalid role", http.StatusUnauthorized)
+			response.ErrorResponse(w, http.StatusUnauthorized, "Unauthorized access - missing or invalid role", 1002)
 			return
 		}
 		// Role-based request handling
 		switch role {
 		case "Householder":
 			householderController.ViewApprovedRequest(w, r)
+		case "Admin":
+			householderController.ViewApprovedRequest(w, r)
 		case "ServiceProvider":
 			serviceProviderController.ViewApprovedRequests(w, r)
-		default:
-			// If role is not recognized, return a forbidden status
-			http.Error(w, "Forbidden - role not allowed", http.StatusForbidden)
 		}
 	}).Methods("GET")
 
@@ -96,15 +100,16 @@ func SetupRouter(userService interfaces.UserService, householderService interfac
 
 	// Routes for admin actions
 	//adminRoutes.HandleFunc("/services", adminController.ViewAllService).Methods("GET")
-	adminRoutes.HandleFunc("/services/{serviceID}", adminController.DeleteService).Methods("DELETE")
+	adminRoutes.HandleFunc("/service/{serviceID}", adminController.DeleteService).Methods("DELETE")
 	adminRoutes.HandleFunc("/reports", adminController.ViewReports).Methods("GET")
 	adminRoutes.HandleFunc("/deactivate/{providerID}", adminController.DeactivateUserAccount).Methods("PATCH")
-
+	adminRoutes.HandleFunc("/service", adminController.AddService).Methods("POST")
+	adminRoutes.HandleFunc("/users/{userEmail}", adminController.ViewUserDetail).Methods("GET")
 	// Get available service for admin and householder
 	userRoutes.HandleFunc("/services", func(w http.ResponseWriter, r *http.Request) {
 		role, ok := r.Context().Value("role").(string)
 		if !ok {
-			http.Error(w, "Unauthorized access - missing or invalid role", http.StatusUnauthorized)
+			response.ErrorResponse(w, http.StatusUnauthorized, "Unauthorized access - missing or invalid role", 1002)
 			return
 		}
 		switch role {
@@ -114,7 +119,7 @@ func SetupRouter(userService interfaces.UserService, householderService interfac
 			adminController.ViewAllService(w, r)
 		default:
 			// If role is not recognized, return a forbidden status
-			http.Error(w, "Forbidden - role not allowed", http.StatusForbidden)
+			response.ErrorResponse(w, http.StatusForbidden, "Forbidden - role not allowed", 1002)
 		}
 	}).Methods("GET")
 	return r

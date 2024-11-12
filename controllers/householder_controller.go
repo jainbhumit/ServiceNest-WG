@@ -9,6 +9,7 @@ import (
 	"serviceNest/logger"
 	"serviceNest/model"
 	"serviceNest/response"
+	"serviceNest/util"
 	"time"
 )
 
@@ -24,8 +25,9 @@ func NewHouseholderController(householderService interfaces.HouseholderService) 
 
 func (h *HouseholderController) GetAvailableServices(w http.ResponseWriter, r *http.Request) {
 	category := r.URL.Query().Get("category")
+	limit, offset := util.GetPaginationParams(r)
 	if category == "" {
-		services, err := h.householderService.GetAvailableServices()
+		services, err := h.householderService.GetAvailableServices(limit, offset)
 		if err != nil {
 			logger.Error("error fetching all service", nil)
 			response.ErrorResponse(w, http.StatusInternalServerError, "internal server error", 1006)
@@ -35,8 +37,8 @@ func (h *HouseholderController) GetAvailableServices(w http.ResponseWriter, r *h
 	} else {
 		services, err := h.householderService.GetServicesByCategory(category)
 		if err != nil {
-			logger.Error("error fetching services", nil)
-			response.ErrorResponse(w, http.StatusInternalServerError, "internal server error", 1006)
+			logger.Error(err.Error(), nil)
+			response.ErrorResponse(w, http.StatusInternalServerError, "error fetching services", 1006)
 			return
 		}
 		response.SuccessResponse(w, services, "Available services", http.StatusOK)
@@ -47,6 +49,8 @@ func (h *HouseholderController) GetAvailableServices(w http.ResponseWriter, r *h
 func (h *HouseholderController) RequestService(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		ServiceName   string `json:"service_name" validate:"required"`
+		Category      string `json:"category" validate:"required"`
+		Description   string `json:"description" validate:"required"`
 		ScheduledTime string `json:"scheduled_time" validate:"required"`
 	}
 
@@ -90,9 +94,9 @@ func (h *HouseholderController) RequestService(w http.ResponseWriter, r *http.Re
 	}
 
 	// Pass the request's ServiceName and ScheduledTime to the service layer
-	requestID, err := h.householderService.RequestService(householderID, request.ServiceName, &scheduleTime)
+	requestID, err := h.householderService.RequestService(householderID, request.ServiceName, request.Category, request.Description, &scheduleTime)
 	if err != nil {
-		logger.Error("error requesting service", nil)
+		logger.Error(err.Error(), nil)
 		response.ErrorResponse(w, http.StatusInternalServerError, "error requesting service", 1006)
 		return
 	}
@@ -209,8 +213,9 @@ func (h *HouseholderController) ViewBookingHistory(w http.ResponseWriter, r *htt
 		return
 	}
 
+	limit, offset := util.GetPaginationParams(r)
 	// Fetch service requests for the householder
-	serviceRequests, err := h.householderService.ViewStatus(householderID)
+	serviceRequests, err := h.householderService.ViewStatus(householderID, limit, offset)
 	if err != nil {
 		logger.Error("Failed to fetch service requests", map[string]interface{}{
 			"householderID": householderID,
@@ -272,9 +277,24 @@ func (h *HouseholderController) ViewBookingHistory(w http.ResponseWriter, r *htt
 }
 
 func (h *HouseholderController) ViewApprovedRequest(w http.ResponseWriter, r *http.Request) {
-	householderID := r.Context().Value("userID").(string)
-
-	approvedRequests, err := h.householderService.ViewApprovedRequests(householderID)
+	role := r.Context().Value("role").(string)
+	var householderID string
+	if role == "Admin" {
+		householderID = r.URL.Query().Get("user_id")
+		if householderID == "" {
+			logger.Error("No query param", nil)
+			response.ErrorResponse(w, http.StatusBadRequest, "user ID is required", 2001)
+			return
+		}
+	} else if role == "Householder" {
+		householderID = r.Context().Value("userID").(string)
+	} else {
+		logger.Error("Invalid role", nil)
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid role", 1007)
+		return
+	}
+	limit, offset := util.GetPaginationParams(r)
+	approvedRequests, err := h.householderService.ViewApprovedRequests(householderID, limit, offset)
 	if err != nil {
 		logger.Error(err.Error(), nil)
 		response.ErrorResponse(w, http.StatusInternalServerError, err.Error(), 1008)
@@ -308,13 +328,14 @@ func (h *HouseholderController) ViewApprovedRequest(w http.ResponseWriter, r *ht
 				Status:        request.Status,
 			}
 			for _, provider := range request.ProviderDetails {
-				if provider.Approve {
+				if provider.Approve == 1 {
 					currRequest.ProviderDetails = append(currRequest.ProviderDetails, model.ServiceProviderDetails{
-						Name:    provider.Name,
-						Contact: provider.Contact,
-						Address: provider.Address,
-						Price:   provider.Price,
-						Rating:  provider.Rating,
+						ServiceProviderID: provider.ServiceProviderID,
+						Name:              provider.Name,
+						Contact:           provider.Contact,
+						Address:           provider.Address,
+						Price:             provider.Price,
+						Rating:            provider.Rating,
 					})
 				}
 
@@ -363,6 +384,7 @@ func (h *HouseholderController) ApproveRequest(w http.ResponseWriter, r *http.Re
 		response.ErrorResponse(w, http.StatusBadRequest, "Invalid role", 1007)
 		return
 	}
+
 	// Call the approval function
 	if err = h.householderService.ApproveServiceRequest(request.RequestID, request.ProviderID, householderID); err != nil {
 		logger.Error(err.Error(), nil)
@@ -415,4 +437,18 @@ func (h *HouseholderController) LeaveReview(w http.ResponseWriter, r *http.Reque
 	// Successfully added the review
 	logger.Info("Review added successfully", nil)
 	response.SuccessResponse(w, nil, "Review added successfully", http.StatusOK)
+}
+
+func (h *HouseholderController) GetAllServiceCategories(w http.ResponseWriter, r *http.Request) {
+	// Call the householder service to get all service categories
+	categories, err := h.householderService.GetAllServiceCategory()
+	if err != nil {
+		logger.Error(fmt.Sprintf("Error fetching categories: %v", err), nil)
+		response.ErrorResponse(w, http.StatusInternalServerError, "Failed to fetch service categories", 1006)
+		return
+	}
+
+	// Successfully retrieved the categories
+	logger.Info("Categories retrieved successfully", nil)
+	response.SuccessResponse(w, categories, "Categories retrieved successfully", http.StatusOK)
 }

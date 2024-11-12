@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-playground/validator"
 	"net/http"
+	"serviceNest/errs"
 	"serviceNest/interfaces"
 	"serviceNest/logger"
 	"serviceNest/model"
@@ -92,12 +93,13 @@ func (u *UserController) LoginUser(w http.ResponseWriter, r *http.Request) {
 }
 func (u *UserController) SignupUser(w http.ResponseWriter, r *http.Request) {
 	var newUser struct {
-		Name     string `json:"name" validate:"required"`
-		Email    string `json:"email" validate:"required"`
-		Password string `json:"password" validate:"required"`
-		Role     string `json:"role" validate:"required"`
-		Address  string `json:"address" validate:"required"`
-		Contact  string `json:"contact" validate:"required"`
+		Name           string `json:"name" validate:"required"`
+		Email          string `json:"email" validate:"required"`
+		Password       string `json:"password" validate:"required"`
+		Role           string `json:"role" validate:"required"`
+		Address        string `json:"address" validate:"required"`
+		Contact        string `json:"contact" validate:"required"`
+		SecurityAnswer string `json:"security_answer" validate:"required"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&newUser); err != nil {
 		logger.Error("Invalid input", nil)
@@ -132,12 +134,13 @@ func (u *UserController) SignupUser(w http.ResponseWriter, r *http.Request) {
 
 	// Save the user
 	user := &model.User{
-		Name:     newUser.Name,
-		Email:    newUser.Email,
-		Password: newUser.Password,
-		Role:     newUser.Role,
-		Address:  newUser.Address,
-		Contact:  newUser.Contact,
+		Name:           newUser.Name,
+		Email:          newUser.Email,
+		Password:       newUser.Password,
+		Role:           newUser.Role,
+		Address:        newUser.Address,
+		Contact:        newUser.Contact,
+		SecurityAnswer: newUser.SecurityAnswer,
 	}
 	err = u.userService.CreateUser(user)
 	if err != nil {
@@ -185,6 +188,7 @@ func (u *UserController) UpdateUserHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&updateData); err != nil {
+		logger.Error("Invalid input", map[string]interface{}{"body": updateData})
 		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
 		//http.Error(w, "Invalid input", http.StatusBadRequest)
 		return
@@ -207,11 +211,70 @@ func (u *UserController) UpdateUserHandler(w http.ResponseWriter, r *http.Reques
 	// Call the UserService to update the user profile
 	err = u.userService.UpdateUser(userID, updateData.Email, &hashedPassword, updateData.Address, updateData.Contact)
 	if err != nil {
-		response.ErrorResponse(w, http.StatusInternalServerError, "Error updating user", 1006)
+		response.ErrorResponse(w, http.StatusInternalServerError, err.Error(), 1006)
 		//http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	logger.Info("user updated sucessfully", map[string]interface{}{"email": *updateData.Email})
 	response.SuccessResponse(w, nil, "User updated successfully", http.StatusOK)
+
+}
+
+func (u *UserController) ForgetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+
+	// Parse incoming JSON data
+	var updateData struct {
+		Email          *string `json:"email" validate:"required"`
+		SecurityAnswer *string `json:"security_answer" validate:"required"`
+		Password       *string `json:"password" validate:"required"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&updateData); err != nil {
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
+		return
+	}
+
+	err := validate.Struct(updateData)
+
+	if err != nil {
+		logger.Error("Validation error", nil)
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
+		return
+	}
+
+	err = ValidatePassword(*updateData.Password)
+	if err != nil {
+		logger.Error("Error validating password", map[string]interface{}{"email": *updateData.Email})
+		response.ErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("%v", err), 1001)
+
+		return
+	}
+	hashedPassword, err := HashPassword(*updateData.Password)
+	if err != nil {
+		logger.Error("Error hashing password", map[string]interface{}{"email": *updateData.Email})
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error hashing password", 1006)
+		return
+	}
+
+	// Call the UserService to update the user profile
+
+	err1 := u.userService.ForgetPasword(*updateData.Email, *updateData.SecurityAnswer, hashedPassword)
+	if err1 != nil {
+
+		if err1.Error() == errs.UserNotFound {
+			logger.Error("User not found", nil)
+			response.ErrorResponse(w, http.StatusNotFound, "email doesn't exist", 1008)
+			return
+		} else if err1.Error() == errs.IncorrectSecurityAnswer {
+			logger.Error(err1.Error(), nil)
+			response.ErrorResponse(w, http.StatusUnauthorized, "incorrect security answer", 1007)
+			return
+		}
+		logger.Error(err1.Error(), nil)
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error updating user", 1006)
+		return
+	}
+	logger.Info("password updated sucessfully", map[string]interface{}{"email": *updateData.Email})
+	response.SuccessResponse(w, nil, "User password updated successfully", http.StatusOK)
 
 }

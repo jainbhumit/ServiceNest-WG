@@ -21,19 +21,20 @@ func TestSaveUser(t *testing.T) {
 
 	// Step 3: Define the mock behavior for the INSERT INTO users query
 	mock.ExpectExec("INSERT INTO users").
-		WithArgs("123", "John Doe", "john@example.com", "hashed_password", "Householder", "123 Main St", "1234567890", true).
+		WithArgs("123", "John Doe", "john@example.com", "hashed_password", "Householder", "123 Main St", "1234567890", "alok", true).
 		WillReturnResult(sqlmock.NewResult(1, 1)) // Simulate successful insert
 
 	// Step 4: Define the user object that we want to save
 	user := &model.User{
-		ID:       "123",
-		Name:     "John Doe",
-		Email:    "john@example.com",
-		Password: "hashed_password",
-		Role:     "Householder",
-		Address:  "123 Main St",
-		Contact:  "1234567890",
-		IsActive: true,
+		ID:             "123",
+		Name:           "John Doe",
+		Email:          "john@example.com",
+		Password:       "hashed_password",
+		Role:           "Householder",
+		Address:        "123 Main St",
+		Contact:        "1234567890",
+		SecurityAnswer: "alok",
+		IsActive:       true,
 	}
 
 	// Step 5: Call the SaveUser method from the repository

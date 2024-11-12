@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/gorilla/handlers"
 	"log"
 	"net/http"
 	"serviceNest/config"
@@ -37,7 +38,11 @@ func runApp(client *sql.DB) {
 
 	})
 	log.Println("Sever Starting on Port 8080...")
-	err := http.ListenAndServe(config.PORT, router)
+	err := http.ListenAndServe(config.PORT, handlers.CORS(
+		handlers.AllowedOrigins([]string{"*"}),
+		handlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
+		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "OPTIONS", "DELETE"}),
+	)(router))
 	if err != nil {
 		log.Fatal(err)
 	}

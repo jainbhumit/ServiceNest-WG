@@ -7,4 +7,5 @@ type UserService interface {
 	CheckUserExists(email string) (*model.User, error)
 	UpdateUser(userID string, newEmail, newPassword, newAddress, newPhone *string) error
 	ViewProfileByID(userID string) (*model.User, error)
+	ForgetPasword(email string, answer string, updatedPassword string) error
 }

@@ -1,8 +1,10 @@
 package service
 
 import (
+	"errors"
 	"serviceNest/interfaces"
 	"serviceNest/model"
+	"serviceNest/util"
 )
 
 type AdminService struct {
@@ -22,9 +24,9 @@ func NewAdminService(serviceRepo interfaces.ServiceRepository, serviceRequestRep
 	}
 }
 
-func (s *AdminService) ViewReports() ([]model.ServiceRequest, error) {
+func (s *AdminService) ViewReports(limit, offset int) ([]model.ServiceRequest, error) {
 
-	return s.serviceRequestRepo.GetAllServiceRequests()
+	return s.serviceRequestRepo.GetAllServiceRequests(limit, offset)
 
 }
 func (s *AdminService) DeleteService(serviceID string) error {
@@ -42,9 +44,44 @@ func (s *AdminService) DeactivateAccount(userID string) error {
 	if err != nil {
 		return err
 	}
-	return s.userRepo.DeActivateUser(userID)
+	err = s.userRepo.DeActivateUser(userID)
+	if err != nil {
+		return err
+	}
+
+	// Delete all services associated with the user
+	err = s.providerRepo.DeleteServicesByProviderID(userID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (s *AdminService) GetAllService() ([]model.Service, error) {
-	return s.serviceRepo.GetAllServices()
+func (s *AdminService) GetAllService(limit, offset int) ([]model.Service, error) {
+	return s.serviceRepo.GetAllServices(limit, offset)
+}
+
+func (s *AdminService) AddService(name, description string) error {
+	service := &model.Category{
+		Name:        name,
+		Description: description,
+		ID:          util.GenerateUniqueID(),
+	}
+	err := s.serviceRepo.AddCategory(service)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *AdminService) GetUserByEmail(email string) (*model.User, error) {
+	user, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	if user.Role != "Householder" {
+		return nil, errors.New("You are not a Householder")
+	}
+	return user, nil
 }

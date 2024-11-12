@@ -45,7 +45,6 @@ func (s *ServiceProviderController) AddService(w http.ResponseWriter, r *http.Re
 	providerID := r.Context().Value("userID").(string)
 
 	newService := &model.Service{
-		ID:          GenerateUniqueID(),
 		Name:        request.Name,
 		Description: request.Description,
 		Price:       request.Price,
@@ -53,10 +52,10 @@ func (s *ServiceProviderController) AddService(w http.ResponseWriter, r *http.Re
 		ProviderID:  providerID,
 	}
 
-	err = s.serviceProviderService.AddService(providerID, *newService)
+	serviceId, err := s.serviceProviderService.AddService(providerID, *newService)
 	if err != nil {
-		logger.Error("Error adding service", nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, err.Error(), 1003)
+		logger.Error(err.Error(), nil)
+		response.ErrorResponse(w, http.StatusInternalServerError, "error adding services", 1003)
 
 		//http.Error(w, "Error adding service", http.StatusInternalServerError)
 		return
@@ -64,7 +63,7 @@ func (s *ServiceProviderController) AddService(w http.ResponseWriter, r *http.Re
 	var serviceID struct {
 		ID string `json:"service_id"`
 	}
-	serviceID.ID = newService.ID
+	serviceID.ID = serviceId
 	response.SuccessResponse(w, serviceID, "Service added successfully", http.StatusOK)
 
 }
@@ -148,8 +147,9 @@ func (s *ServiceProviderController) RemoveService(w http.ResponseWriter, r *http
 }
 
 func (s *ServiceProviderController) ViewServiceRequest(w http.ResponseWriter, r *http.Request) {
-
-	serviceRequests, err := s.serviceProviderService.GetAllServiceRequests()
+	providerID := r.Context().Value("userID").(string)
+	limit, offset := util.GetPaginationParams(r)
+	serviceRequests, err := s.serviceProviderService.GetAllServiceRequests(providerID, limit, offset)
 	if err != nil {
 		logger.Error(err.Error(), nil)
 		response.ErrorResponse(w, http.StatusInternalServerError, fmt.Sprintf("error fetching request %v", err), 1006)
@@ -163,6 +163,7 @@ func (s *ServiceProviderController) ViewServiceRequest(w http.ResponseWriter, r 
 		RequestedTime      time.Time `json:"requested_time"`
 		ScheduledTime      time.Time `json:"scheduled_time"`
 		HouseholderAddress string    `json:"address"`
+		Description        string    `json:"description"`
 	}
 	responseBody := make([]responseStruct, 0)
 	// Filter and display only pending requests
@@ -176,6 +177,7 @@ func (s *ServiceProviderController) ViewServiceRequest(w http.ResponseWriter, r 
 				RequestedTime:      request.RequestedTime,
 				ScheduledTime:      request.ScheduledTime,
 				HouseholderAddress: *request.HouseholderAddress,
+				Description:        request.Description,
 			})
 		}
 	}
@@ -211,8 +213,13 @@ func (s *ServiceProviderController) AcceptServiceRequest(w http.ResponseWriter, 
 
 	providerID := r.Context().Value("userID").(string)
 	err = s.serviceProviderService.AcceptServiceRequest(providerID, request.ID, request.EstimatedPrice)
+
 	if err != nil {
 		logger.Error(err.Error(), nil)
+		if err.Error() == "provider not found" {
+			response.SuccessResponse(w, nil, "provider not found", 200)
+			return
+		}
 		response.ErrorResponse(w, http.StatusInternalServerError, "Error accepting service request", 1008)
 		//http.Error(w, "Error accepting service request", http.StatusInternalServerError)
 		return
@@ -226,7 +233,8 @@ func (s *ServiceProviderController) AcceptServiceRequest(w http.ResponseWriter, 
 func (s *ServiceProviderController) ViewApprovedRequests(w http.ResponseWriter, r *http.Request) {
 	providerID := r.Context().Value("userID").(string)
 
-	approvedRequests, err := s.serviceProviderService.ViewApprovedRequestsByProvider(providerID)
+	limit, offset := util.GetPaginationParams(r)
+	approvedRequests, err := s.serviceProviderService.ViewApprovedRequestsByProvider(providerID, limit, offset)
 
 	if err != nil {
 		logger.Error(err.Error(), nil)
@@ -235,10 +243,10 @@ func (s *ServiceProviderController) ViewApprovedRequests(w http.ResponseWriter, 
 		//http.Error(w, "Error fetching approved requests", http.StatusInternalServerError)
 		return
 	}
+	fmt.Println(approvedRequests)
 	type responseStruct struct {
-		ID          string `json:"request_id"`
-		ServiceName string `json:"service_name,omitempty"`
-
+		ID                 string                         `json:"request_id"`
+		ServiceName        string                         `json:"service_name,omitempty"`
 		HouseholderId      string                         `json:"householder_id"`
 		HouseholderName    string                         `json:"householder_name"`
 		HouseholderAddress string                         `json:"householder_address"`
@@ -246,6 +254,7 @@ func (s *ServiceProviderController) ViewApprovedRequests(w http.ResponseWriter, 
 		ServiceID          string                         `json:"service_id" `
 		RequestedTime      time.Time                      `json:"requested_time"`
 		ScheduledTime      time.Time                      `json:"scheduled_time"`
+		Contact            string                         `json:"householder_contact"`
 		Status             string                         `json:"status"`
 		ProviderDetails    []model.ServiceProviderDetails `json:"provider_details,omitempty" bson:"providerDetails,omitempty"`
 	}
@@ -262,6 +271,7 @@ func (s *ServiceProviderController) ViewApprovedRequests(w http.ResponseWriter, 
 				HouseholderId:      *request.HouseholderID,
 				HouseholderAddress: *request.HouseholderAddress,
 				HouseholderName:    request.HouseholderName,
+				Contact:            request.HouseholderContact,
 			}
 			responseBody = append(responseBody, *currRequest)
 
@@ -275,9 +285,9 @@ func (s *ServiceProviderController) ViewApprovedRequests(w http.ResponseWriter, 
 
 func (s *ServiceProviderController) ViewReviews(w http.ResponseWriter, r *http.Request) {
 	providerID := r.Context().Value("userID").(string)
-
+	limit, offset := util.GetPaginationParams(r)
 	// Call the service to get the reviews
-	reviews, err := s.serviceProviderService.GetReviews(providerID)
+	reviews, err := s.serviceProviderService.GetReviews(providerID, limit, offset)
 	if err != nil {
 		logger.Error(err.Error(), nil)
 		response.ErrorResponse(w, http.StatusInternalServerError, "Failed to fetch reviews", 1003)
