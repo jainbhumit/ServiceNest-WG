@@ -14,7 +14,7 @@ type ServiceProviderRepository interface {
 	IsProviderApproved(providerID string) (bool, error)
 	AddReview(review model.Review) error
 	UpdateProviderRating(providerID string, serviceId string, rating float64) error
-	GetReviewsByProviderID(providerID string, limit, offset int) ([]model.Review, error)
+	GetReviewsByProviderID(providerID string, limit, offset int, serviceID string) ([]model.Review, error)
 	AddServiceToProvider(providerID, serviceID string) error
 	DeleteServicesByProviderID(userID string) error
 }

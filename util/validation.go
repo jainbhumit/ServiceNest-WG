@@ -103,3 +103,7 @@ func GetPaginationParams(r *http.Request) (int, int) {
 
 	return limit, offset
 }
+
+func GetFilterParam(r *http.Request, filterKey string) string {
+	return r.URL.Query().Get(filterKey)
+}

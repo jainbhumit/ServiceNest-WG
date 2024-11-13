@@ -149,7 +149,8 @@ func (s *ServiceProviderController) RemoveService(w http.ResponseWriter, r *http
 func (s *ServiceProviderController) ViewServiceRequest(w http.ResponseWriter, r *http.Request) {
 	providerID := r.Context().Value("userID").(string)
 	limit, offset := util.GetPaginationParams(r)
-	serviceRequests, err := s.serviceProviderService.GetAllServiceRequests(providerID, limit, offset)
+	serviceID := util.GetFilterParam(r, "serviceId")
+	serviceRequests, err := s.serviceProviderService.GetAllServiceRequests(providerID, serviceID, limit, offset)
 	if err != nil {
 		logger.Error(err.Error(), nil)
 		response.ErrorResponse(w, http.StatusInternalServerError, fmt.Sprintf("error fetching request %v", err), 1006)
@@ -234,7 +235,16 @@ func (s *ServiceProviderController) ViewApprovedRequests(w http.ResponseWriter, 
 	providerID := r.Context().Value("userID").(string)
 
 	limit, offset := util.GetPaginationParams(r)
-	approvedRequests, err := s.serviceProviderService.ViewApprovedRequestsByProvider(providerID, limit, offset)
+	order := util.GetFilterParam(r, "order")
+	var sortOrder string
+	if order == "New to Old" {
+		sortOrder = "DESC"
+	} else if order == "Old to New" {
+		sortOrder = "ASC"
+	} else {
+		sortOrder = ""
+	}
+	approvedRequests, err := s.serviceProviderService.ViewApprovedRequestsByProvider(providerID, limit, offset, sortOrder)
 
 	if err != nil {
 		logger.Error(err.Error(), nil)
@@ -287,10 +297,11 @@ func (s *ServiceProviderController) ViewReviews(w http.ResponseWriter, r *http.R
 	providerID := r.Context().Value("userID").(string)
 	limit, offset := util.GetPaginationParams(r)
 	// Call the service to get the reviews
-	reviews, err := s.serviceProviderService.GetReviews(providerID, limit, offset)
+	serviceID := util.GetFilterParam(r, "serviceId")
+	reviews, err := s.serviceProviderService.GetReviews(providerID, limit, offset, serviceID)
 	if err != nil {
 		logger.Error(err.Error(), nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, "Failed to fetch reviews", 1003)
+		response.ErrorResponse(w, http.StatusInternalServerError, err.Error(), 1003)
 
 		//http.Error(w, "Failed to fetch reviews", http.StatusInternalServerError)
 		return

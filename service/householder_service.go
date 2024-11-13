@@ -27,9 +27,9 @@ func NewHouseholderService(householderRepo interfaces.HouseholderRepository, pro
 		serviceRequestRepo: serviceRequestRepo,
 	}
 }
-func (s *HouseholderService) ViewStatus(householderID string, limit, offset int) ([]model.ServiceRequest, error) {
+func (s *HouseholderService) ViewStatus(householderID string, limit, offset int, status string) ([]model.ServiceRequest, error) {
 	// Fetch all service requests for the householder
-	requests, err := s.serviceRequestRepo.GetServiceRequestsByHouseholderID(householderID, limit, offset)
+	requests, err := s.serviceRequestRepo.GetServiceRequestsByHouseholderID(householderID, limit, offset, status)
 	if err != nil {
 		return nil, err
 	}
@@ -160,8 +160,8 @@ func (s *HouseholderService) RequestService(householderID string, serviceName st
 }
 
 // ViewBookingHistory returns the booking history for a householder
-func (s *HouseholderService) ViewBookingHistory(householderID string, limit, offset int) ([]model.ServiceRequest, error) {
-	return s.serviceRequestRepo.GetServiceRequestsByHouseholderID(householderID, limit, offset)
+func (s *HouseholderService) ViewBookingHistory(householderID string, limit, offset int, status string) ([]model.ServiceRequest, error) {
+	return s.serviceRequestRepo.GetServiceRequestsByHouseholderID(householderID, limit, offset, status)
 }
 
 // Helper function to determine if a provider is nearby
@@ -282,9 +282,9 @@ func (s *HouseholderService) ApproveServiceRequest(requestID string, providerID 
 
 	return nil
 }
-func (s *HouseholderService) ViewApprovedRequests(householderID string, limit, offset int) ([]model.ServiceRequest, error) {
+func (s *HouseholderService) ViewApprovedRequests(householderID string, limit, offset int, sortOrder string) ([]model.ServiceRequest, error) {
 	// Retrieve all service requests for the householder
-	serviceRequests, err := s.serviceRequestRepo.GetApproveServiceRequestsByHouseholderID(householderID, limit, offset)
+	serviceRequests, err := s.serviceRequestRepo.GetApproveServiceRequestsByHouseholderID(householderID, limit, offset, sortOrder)
 	if err != nil {
 		return nil, fmt.Errorf("%v: %v", errs.NotRetrieveRequest, err)
 	}

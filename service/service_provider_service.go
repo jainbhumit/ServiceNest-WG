@@ -80,8 +80,8 @@ func (s *ServiceProviderService) UpdateService(providerID, serviceID string, upd
 	// Update the service in the service repository
 	return nil
 }
-func (s *ServiceProviderService) GetAllServiceRequests(providerId string, limit, offset int) ([]model.ServiceRequest, error) {
-	return s.serviceRequestRepo.GetAllPendingRequestsByProvider(providerId, limit, offset)
+func (s *ServiceProviderService) GetAllServiceRequests(providerId string, serviceID string, limit, offset int) ([]model.ServiceRequest, error) {
+	return s.serviceRequestRepo.GetAllPendingRequestsByProvider(providerId, serviceID, limit, offset)
 }
 
 func (s *ServiceProviderService) RemoveService(providerID, serviceID string) error {
@@ -191,9 +191,9 @@ func (s *ServiceProviderService) GetServiceByID(serviceID string) (*model.Servic
 	return s.serviceRepo.GetServiceByID(serviceID)
 }
 
-func (s *ServiceProviderService) ViewApprovedRequestsByProvider(providerID string, limit, offset int) ([]model.ServiceRequest, error) {
+func (s *ServiceProviderService) ViewApprovedRequestsByProvider(providerID string, limit, offset int, sortOrder string) ([]model.ServiceRequest, error) {
 	// Fetch all service requests related to the provider
-	serviceRequests, err := s.serviceRequestRepo.GetServiceRequestsByProviderID(providerID, limit, offset)
+	serviceRequests, err := s.serviceRequestRepo.GetServiceRequestsByProviderID(providerID, limit, offset, sortOrder)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve service requests: %v", err)
 	}
@@ -206,8 +206,8 @@ func (s *ServiceProviderService) ViewApprovedRequestsByProvider(providerID strin
 	return serviceRequests, nil
 }
 
-func (s *ServiceProviderService) GetReviews(providerID string, limit, offset int) ([]model.Review, error) {
-	reviews, err := s.serviceProviderRepo.GetReviewsByProviderID(providerID, limit, offset)
+func (s *ServiceProviderService) GetReviews(providerID string, limit, offset int, serviceID string) ([]model.Review, error) {
+	reviews, err := s.serviceProviderRepo.GetReviewsByProviderID(providerID, limit, offset, serviceID)
 	if err != nil {
 		return nil, err
 	}

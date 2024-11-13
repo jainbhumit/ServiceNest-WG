@@ -134,113 +134,140 @@ func SelectAverageQuery(tableName, column, condition string) string {
 	return query
 }
 
-func SelectJsonDataQuery() string {
-	return `SELECT
-service_requests.id AS request_id,
-service_requests.householder_id,
-service_requests.householder_name,
-service_requests.householder_address,
-service_requests.service_id,
-service_requests.requested_time,
-service_requests.scheduled_time,
-service_requests.status,
-service_requests.approve_status,
-service_requests.service_name,
-CONCAT(
-'[',
-GROUP_CONCAT(
-JSON_OBJECT(
-'service_provider_id', service_provider_details.service_provider_id,
-'name', service_provider_details.name,
-'contact', service_provider_details.contact,
-'address', service_provider_details.address,
-'price', service_provider_details.price,
-'rating', service_provider_details.rating,
-'approve',service_provider_details.approve
-)
-SEPARATOR ', '
-),
-']'
-) AS provider_details
-FROM
-service_requests
-LEFT JOIN
-service_provider_details ON service_requests.id = service_provider_details.service_request_id
-WHERE
-service_requests.householder_id = ?
-GROUP BY
-service_requests.id
+func SelectJsonDataQuery(withStatus bool) string {
+	query := `
+    SELECT
+        service_requests.id AS request_id,
+        service_requests.householder_id,
+        service_requests.householder_name,
+        service_requests.householder_address,
+        service_requests.service_id,
+        service_requests.requested_time,
+        service_requests.scheduled_time,
+        service_requests.status,
+        service_requests.approve_status,
+        service_requests.service_name,
+        CONCAT(
+            '[',
+            GROUP_CONCAT(
+                JSON_OBJECT(
+                    'service_provider_id', service_provider_details.service_provider_id,
+                    'name', service_provider_details.name,
+                    'contact', service_provider_details.contact,
+                    'address', service_provider_details.address,
+                    'price', service_provider_details.price,
+                    'rating', service_provider_details.rating,
+                    'approve', service_provider_details.approve
+                )
+                SEPARATOR ', '
+            ),
+            ']'
+        ) AS provider_details
+    FROM
+        service_requests
+    LEFT JOIN
+        service_provider_details ON service_requests.id = service_provider_details.service_request_id
+    WHERE
+        service_requests.householder_id = ?
+    `
 
-LIMIT ?  OFFSET ?; 
-`
+	if withStatus {
+		query += " AND service_requests.status = ? "
+	}
+
+	query += `
+    GROUP BY
+        service_requests.id
+    LIMIT ? OFFSET ?;
+    `
+	return query
 }
 
-func SelectJsonDataQueryWithApprove() string {
-	return `SELECT
-service_requests.id AS request_id,
-service_requests.householder_id,
-service_requests.householder_name,
-service_requests.householder_address,
-service_requests.service_id,
-service_requests.requested_time,
-service_requests.scheduled_time,
-service_requests.status,
-service_requests.approve_status,
-service_requests.service_name,
-CONCAT(
-'[',
-GROUP_CONCAT(
-JSON_OBJECT(
-'service_provider_id', service_provider_details.service_provider_id,
-'name', service_provider_details.name,
-'contact', service_provider_details.contact,
-'address', service_provider_details.address,
-'price', service_provider_details.price,
-'rating', service_provider_details.rating,
-'approve',service_provider_details.approve
-)
-SEPARATOR ', '
-),
-']'
-) AS provider_details
-FROM
-service_requests
-LEFT JOIN
-service_provider_details ON service_requests.id = service_provider_details.service_request_id
-WHERE
-service_requests.householder_id = ?
-and service_requests.approve_status = ?
-GROUP BY
-service_requests.id
-
-LIMIT ?  OFFSET ?; 
-`
-}
-
-func ViewPendingRequestByProvider() string {
-	return `
-		SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, 
-		       sr.requested_time, sr.scheduled_time, sr.description, sr.status, sr.approve_status, sr.service_name
-		FROM service_requests sr
-		LEFT JOIN service_provider_details spd 
-		ON sr.id = spd.service_request_id AND spd.service_provider_id = ?
-		WHERE spd.service_request_id IS NULL
-		LIMIT ? OFFSET ?;
+func SelectJsonDataQueryWithApprove(sortOrder string) string {
+	baseQuery := `
+		SELECT
+			service_requests.id AS request_id,
+			service_requests.householder_id,
+			service_requests.householder_name,
+			service_requests.householder_address,
+			service_requests.service_id,
+			service_requests.requested_time,
+			service_requests.scheduled_time,
+			service_requests.status,
+			service_requests.approve_status,
+			service_requests.service_name,
+			CONCAT(
+				'[',
+				GROUP_CONCAT(
+					JSON_OBJECT(
+						'service_provider_id', service_provider_details.service_provider_id,
+						'name', service_provider_details.name,
+						'contact', service_provider_details.contact,
+						'address', service_provider_details.address,
+						'price', service_provider_details.price,
+						'rating', service_provider_details.rating,
+						'approve', service_provider_details.approve
+					)
+					SEPARATOR ', '
+				),
+				']'
+			) AS provider_details
+		FROM
+			service_requests
+		LEFT JOIN
+			service_provider_details ON service_requests.id = service_provider_details.service_request_id
+		WHERE
+			service_requests.householder_id = ?
+			AND service_requests.approve_status = ?
+		GROUP BY
+			service_requests.id
 	`
+	// Append ORDER BY clause if sortOrder is valid
+	if sortOrder == "ASC" || sortOrder == "DESC" {
+		baseQuery += fmt.Sprintf(" ORDER BY service_requests.scheduled_time %s", sortOrder)
+	}
+
+	// Add LIMIT and OFFSET for pagination
+	baseQuery += " LIMIT ? OFFSET ?;"
+
+	return baseQuery
 }
 
-func SelectInnerJoinQueryPaginate(tableName, joinTable, joinCondition, condition string, firstTableColumns []string, secondTableColumns []string, limit, offset int) string {
-	for i, coloumn := range firstTableColumns {
-		firstTableColumns[i] = tableName + "." + coloumn
+func ViewPendingRequestByProvider(serviceID string) string {
+	baseQuery := `
+        SELECT sr.id, sr.householder_id, sr.householder_name, sr.householder_address, sr.service_id, 
+               sr.requested_time, sr.scheduled_time, sr.description, sr.status, sr.approve_status, sr.service_name
+        FROM service_requests sr
+        LEFT JOIN service_provider_details spd 
+        ON sr.id = spd.service_request_id AND spd.service_provider_id = ?
+        WHERE spd.service_request_id IS NULL`
+
+	// Add a filter for service_id if provided
+	if serviceID != "" {
+		baseQuery += ` AND sr.service_id = ?`
+	}
+
+	// Append limit and offset
+	baseQuery += ` LIMIT ? OFFSET ?;`
+	return baseQuery
+}
+
+func SelectInnerJoinQueryPaginate(tableName, joinTable, joinCondition, condition string, firstTableColumns []string, secondTableColumns []string, limit, offset int, sortColumn, sortOrder string) string {
+	// Prefix columns with their table names
+	for i, column := range firstTableColumns {
+		firstTableColumns[i] = tableName + "." + column
 	}
 	firstColNames := strings.Join(firstTableColumns, ", ")
+
 	var secondColNames string
 	if len(secondTableColumns) > 0 {
-		for i, coloumn := range secondTableColumns {
-			secondTableColumns[i] = joinTable + "." + coloumn
+		for i, column := range secondTableColumns {
+			secondTableColumns[i] = joinTable + "." + column
 		}
 		secondColNames = strings.Join(secondTableColumns, ", ")
 	}
+
+	// Base query with table columns
 	var query string
 	if len(secondTableColumns) > 0 {
 		query = fmt.Sprintf("SELECT %s, %s FROM %s", firstColNames, secondColNames, tableName)
@@ -251,35 +278,40 @@ func SelectInnerJoinQueryPaginate(tableName, joinTable, joinCondition, condition
 	// Add INNER JOIN clause
 	if joinTable != "" && joinCondition != "" {
 		query += fmt.Sprintf(" INNER JOIN %s ON %s", joinTable, joinCondition)
-	} else if joinCondition == "" {
-		query += fmt.Sprintf(" INNER JOIN %s", joinTable)
 	}
 
+	// Add WHERE condition if provided
 	if condition != "" {
 		query += fmt.Sprintf(" WHERE %s = ?", condition)
 	}
 
+	// Add ORDER BY clause if sortColumn and sortOrder are provided
+	if sortColumn != "" && (sortOrder == "ASC" || sortOrder == "DESC") {
+		query += fmt.Sprintf(" ORDER BY %s %s", sortColumn, sortOrder)
+	}
+
+	// Add LIMIT and OFFSET for pagination
 	if limit > 0 {
 		query += fmt.Sprintf(" LIMIT %d", limit)
 	}
 	if offset > 0 {
 		query += fmt.Sprintf(" OFFSET %d", offset)
 	}
+
 	return query
 }
 
 func SelectQueryWithLimit(tableName, condition1, condition2 string, columns []string, limit, offset int) string {
 	colNames := strings.Join(columns, ", ")
-	var query string
-	if condition1 == "" && condition2 == "" {
-		query = fmt.Sprintf("SELECT %s FROM %s", colNames, tableName)
-	}
-	if condition1 != "" && condition2 == "" {
-		query = fmt.Sprintf("SELECT %s FROM %s WHERE %s = ?", colNames, tableName, condition1)
-	}
+	query := fmt.Sprintf("SELECT %s FROM %s", colNames, tableName)
+
+	// Add conditions only if they are provided
 	if condition1 != "" && condition2 != "" {
-		query = fmt.Sprintf("SELECT %s FROM %s WHERE %s = ? AND %s = ?", colNames, tableName, condition1, condition2)
+		query += fmt.Sprintf(" WHERE %s = ? AND %s = ?", condition1, condition2)
+	} else if condition1 != "" {
+		query += fmt.Sprintf(" WHERE %s = ?", condition1)
 	}
+
 	if limit > 0 {
 		query += fmt.Sprintf(" LIMIT %d", limit)
 	}
@@ -288,4 +320,8 @@ func SelectQueryWithLimit(tableName, condition1, condition2 string, columns []st
 	}
 
 	return query
+}
+
+func CountReviewAddedQuery() string {
+	return `SELECT COUNT(*) FROM reviews WHERE provider_id = ? AND service_id = ? AND householder_id = ?`
 }

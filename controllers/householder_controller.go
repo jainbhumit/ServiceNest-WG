@@ -214,8 +214,9 @@ func (h *HouseholderController) ViewBookingHistory(w http.ResponseWriter, r *htt
 	}
 
 	limit, offset := util.GetPaginationParams(r)
+	status := util.GetFilterParam(r, "status")
 	// Fetch service requests for the householder
-	serviceRequests, err := h.householderService.ViewStatus(householderID, limit, offset)
+	serviceRequests, err := h.householderService.ViewStatus(householderID, limit, offset, status)
 	if err != nil {
 		logger.Error("Failed to fetch service requests", map[string]interface{}{
 			"householderID": householderID,
@@ -294,7 +295,16 @@ func (h *HouseholderController) ViewApprovedRequest(w http.ResponseWriter, r *ht
 		return
 	}
 	limit, offset := util.GetPaginationParams(r)
-	approvedRequests, err := h.householderService.ViewApprovedRequests(householderID, limit, offset)
+	order := util.GetFilterParam(r, "order")
+	var sortOrder string
+	if order == "New to Old" {
+		sortOrder = "DESC"
+	} else if order == "Old to New" {
+		sortOrder = "ASC"
+	} else {
+		sortOrder = ""
+	}
+	approvedRequests, err := h.householderService.ViewApprovedRequests(householderID, limit, offset, sortOrder)
 	if err != nil {
 		logger.Error(err.Error(), nil)
 		response.ErrorResponse(w, http.StatusInternalServerError, err.Error(), 1008)
@@ -430,7 +440,7 @@ func (h *HouseholderController) LeaveReview(w http.ResponseWriter, r *http.Reque
 	err = h.householderService.AddReview(reviewRequest.ProviderID, userID, reviewRequest.ServiceID, reviewRequest.ReviewText, reviewRequest.Rating)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error adding review %v", err), nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, "Failed to submit review", 1006)
+		response.ErrorResponse(w, http.StatusInternalServerError, err.Error(), 1006)
 		return
 	}
 

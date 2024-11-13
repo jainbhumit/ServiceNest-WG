@@ -168,13 +168,27 @@ func (repo *ServiceProviderRepository) IsProviderApproved(providerID string) (bo
 
 // AddReview adds a review to the reviews table
 func (repo *ServiceProviderRepository) AddReview(review model.Review) error {
-	tx, err := repo.Collection.Begin() // Start a transaction
+	tx, err := repo.Collection.Begin()
 	if err != nil {
 		return err
 	}
-	column := []string{"id", "provider_id", "service_id", "householder_id", "rating", "comments", "review_date"}
-	reviewQuery := config.InsertQuery("reviews", column)
-	// Insert the review into the reviews table with providerID
+
+	columns := []string{"id", "provider_id", "service_id", "householder_id", "rating", "comments", "review_date"}
+	reviewQuery := config.InsertQuery("reviews", columns)
+
+	checkQuery := config.CountReviewAddedQuery()
+	var count int
+	err = tx.QueryRow(checkQuery, review.ProviderID, review.ServiceID, review.HouseholderID).Scan(&count)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if count > 0 {
+
+		tx.Rollback()
+		return fmt.Errorf("review already exists for this provider, service, and householder")
+	}
 
 	_, err = tx.Exec(reviewQuery, review.ID, review.ProviderID, review.ServiceID, review.HouseholderID, review.Rating, review.Comments, review.ReviewDate)
 	if err != nil {
@@ -182,7 +196,7 @@ func (repo *ServiceProviderRepository) AddReview(review model.Review) error {
 		return err
 	}
 
-	return tx.Commit() // Commit the transaction
+	return tx.Commit()
 }
 
 // UpdateProviderRating recalculates and updates the provider's average rating
@@ -226,11 +240,22 @@ func (repo *ServiceProviderRepository) UpdateProviderRating(providerID string, s
 	return nil
 }
 
-func (repo *ServiceProviderRepository) GetReviewsByProviderID(providerID string, limit, offset int) ([]model.Review, error) {
+func (repo *ServiceProviderRepository) GetReviewsByProviderID(providerID string, limit, offset int, serviceID string) ([]model.Review, error) {
 	column := []string{"id", "provider_id", "service_id", "householder_id", "rating", "comments", "review_date"}
-	query := config.SelectQueryWithLimit("reviews", "provider_id", "", column, limit, offset)
+	var query string
+	var rows *sql.Rows
+	var err error
 
-	rows, err := repo.Collection.Query(query, providerID)
+	// Determine query and arguments based on provided filters
+	if providerID != "" && serviceID != "" {
+		// Both filters provided
+		query = config.SelectQueryWithLimit("reviews", "provider_id", "service_id", column, limit, offset)
+		rows, err = repo.Collection.Query(query, providerID, serviceID)
+	} else if providerID != "" {
+		// Only provider filter provided
+		query = config.SelectQueryWithLimit("reviews", "provider_id", "", column, limit, offset)
+		rows, err = repo.Collection.Query(query, providerID)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +276,9 @@ func (repo *ServiceProviderRepository) GetReviewsByProviderID(providerID string,
 		review.ReviewDate = parsedDate
 		reviews = append(reviews, review)
 	}
-
+	if len(reviews) == 0 {
+		return nil, fmt.Errorf("no reviews found")
+	}
 	return reviews, nil
 }
 func (repo *ServiceProviderRepository) AddServiceToProvider(providerID, serviceID string) error {

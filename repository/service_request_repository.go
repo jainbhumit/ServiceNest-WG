@@ -66,10 +66,16 @@ func (repo *ServiceRequestRepository) GetServiceRequestByID(requestID string) (*
 	return &request, nil
 }
 
-func (repo *ServiceRequestRepository) GetServiceRequestsByHouseholderID(householderID string, limit, offset int) ([]model.ServiceRequest, error) {
-	query := config.SelectJsonDataQuery()
+func (repo *ServiceRequestRepository) GetServiceRequestsByHouseholderID(householderID string, limit, offset int, status string) ([]model.ServiceRequest, error) {
+	query := config.SelectJsonDataQuery(status != "")
 
-	rows, err := repo.db.Query(query, householderID, limit, offset)
+	var rows *sql.Rows
+	var err error
+	if status != "" {
+		rows, err = repo.db.Query(query, householderID, status, limit, offset)
+	} else {
+		rows, err = repo.db.Query(query, householderID, limit, offset)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -239,10 +245,10 @@ func (repo *ServiceRequestRepository) GetAllServiceRequests(limit, offset int) (
 }
 
 // GetServiceRequestsByProviderID retrieves service requests by the provider ID from MySQL
-func (repo *ServiceRequestRepository) GetServiceRequestsByProviderID(providerID string, limit, offset int) ([]model.ServiceRequest, error) {
+func (repo *ServiceRequestRepository) GetServiceRequestsByProviderID(providerID string, limit, offset int, sortOrder string) ([]model.ServiceRequest, error) {
 	firstTableColumn := []string{"id", "householder_id", "householder_name", "householder_address", "service_id", "requested_time", "scheduled_time", "status", "approve_status", "householder_contact", "service_name"}
 	secondTableColumn := []string{}
-	query := config.SelectInnerJoinQueryPaginate("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id AND service_provider_details.service_provider_id = ?", "service_provider_details.approve", firstTableColumn, secondTableColumn, limit, offset)
+	query := config.SelectInnerJoinQueryPaginate("service_requests", "service_provider_details", "service_requests.id = service_provider_details.service_request_id AND service_provider_details.service_provider_id = ?", "service_provider_details.approve", firstTableColumn, secondTableColumn, limit, offset, "service_requests.scheduled_time", sortOrder)
 	fmt.Println(query)
 	rows, err := repo.db.Query(query, providerID, true)
 	if err != nil {
@@ -332,8 +338,8 @@ func (repo *ServiceRequestRepository) GetServiceProviderByRequestID(requestID, p
 	return nil, fmt.Errorf(errs.NoServiceProviderFoundForRequestId)
 }
 
-func (repo *ServiceRequestRepository) GetApproveServiceRequestsByHouseholderID(householderID string, limit, offset int) ([]model.ServiceRequest, error) {
-	query := config.SelectJsonDataQueryWithApprove()
+func (repo *ServiceRequestRepository) GetApproveServiceRequestsByHouseholderID(householderID string, limit, offset int, sortOrder string) ([]model.ServiceRequest, error) {
+	query := config.SelectJsonDataQueryWithApprove(sortOrder)
 
 	rows, err := repo.db.Query(query, householderID, true, limit, offset)
 	if err != nil {
@@ -401,13 +407,22 @@ func (repo *ServiceRequestRepository) GetApproveServiceRequestsByHouseholderID(h
 	return requests, nil
 }
 
-func (repo *ServiceRequestRepository) GetAllPendingRequestsByProvider(providerId string, limit, offset int) ([]model.ServiceRequest, error) {
+func (repo *ServiceRequestRepository) GetAllPendingRequestsByProvider(providerId string, serviceID string, limit, offset int) ([]model.ServiceRequest, error) {
 
 	// Update the query to select only service_requests that do not have a matching service_provider_details entry for the given providerId
-	query := config.ViewPendingRequestByProvider()
+	query := config.ViewPendingRequestByProvider(serviceID)
 
 	// Execute the query with the providerId, limit, and offset parameters
-	rows, err := repo.db.Query(query, providerId, limit, offset)
+	var rows *sql.Rows
+	var err error
+
+	// Execute query with parameters based on presence of serviceID
+	if serviceID != "" {
+		rows, err = repo.db.Query(query, providerId, serviceID, limit, offset)
+	} else {
+		rows, err = repo.db.Query(query, providerId, limit, offset)
+	}
+
 	if err != nil {
 		return nil, err
 	}
