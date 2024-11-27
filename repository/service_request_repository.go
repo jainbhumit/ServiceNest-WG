@@ -26,7 +26,7 @@ func (repo *ServiceRequestRepository) SaveServiceRequest(request model.ServiceRe
 	column := []string{"id", "householder_id", "householder_name", "householder_address", "householder_contact", "service_id", "requested_time", "scheduled_time", "status", "approve_status", "service_name", "description"}
 	query := config.InsertQuery("service_requests", column)
 
-	_, err := repo.db.Exec(query, request.ID, request.HouseholderID, request.HouseholderName, request.HouseholderAddress, request.HouseholderContact, request.ServiceID, request.RequestedTime, request.ScheduledTime, request.Status, request.ApproveStatus, request.ServiceName, request.Description)
+	_, err := repo.db.Exec(query, request.ID, request.HouseholderID, request.HouseholderName, request.HouseholderAddress, request.HouseholderContact, request.ServiceID, request.RequestedTime.Format("2006-01-02 15:04:05"), request.ScheduledTime, request.Status, request.ApproveStatus, request.ServiceName, request.Description)
 	return err
 }
 

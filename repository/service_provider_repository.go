@@ -103,13 +103,13 @@ func (repo *ServiceProviderRepository) UpdateServiceProvider(provider *model.Ser
 
 func (repo *ServiceProviderRepository) GetProviderDetailByID(providerID string, serviceId string) (*model.ServiceProviderDetails, error) {
 	firstTableColumn := []string{"name", "address", "contact"}
-	secondTableColumn := []string{"avg_rating"}
+	secondTableColumn := []string{"avg_rating", "rating_count"}
 	query := config.SelectInnerJoinQuery("users", "services", "users.id = services.provider_id", "services.id = ? and services.provider_id", firstTableColumn, secondTableColumn)
 	fmt.Println(query)
 	row := repo.Collection.QueryRow(query, serviceId, providerID)
 	fmt.Println(row)
 	var provider model.ServiceProviderDetails
-	err := row.Scan(&provider.Name, &provider.Address, &provider.Contact, &provider.Rating)
+	err := row.Scan(&provider.Name, &provider.Address, &provider.Contact, &provider.Rating, &provider.RatingCount)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errors.New(errs.ProviderNotFound)

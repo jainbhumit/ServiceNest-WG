@@ -240,7 +240,7 @@ func ViewPendingRequestByProvider(serviceID string) string {
         FROM service_requests sr
         LEFT JOIN service_provider_details spd 
         ON sr.id = spd.service_request_id AND spd.service_provider_id = ?
-        WHERE spd.service_request_id IS NULL`
+        WHERE spd.service_request_id IS NULL AND (sr.status="pending" OR sr.status="accepted")`
 
 	// Add a filter for service_id if provided
 	if serviceID != "" {

@@ -1,10 +1,8 @@
-//go:build !test
-// +build !test
-
 package main
 
 import (
 	"fmt"
+	"github.com/joho/godotenv"
 	"log"
 	"os"
 	"os/signal"
@@ -13,6 +11,12 @@ import (
 	"syscall"
 )
 
+func init() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("Error loading .env file", err)
+	}
+}
 func main() {
 	client, err := config.GetMySQLDB()
 	if err != nil {

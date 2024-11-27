@@ -24,9 +24,10 @@ func runApp(client *sql.DB) {
 	requestRepo := repository.NewServiceRequestRepository(client)
 	providerRepo := repository.NewServiceProviderRepository(client)
 	serviceRepo := repository.NewServiceRepository(client)
+	otpRepo := repository.NewOtpRepository()
 
 	// initialize all services
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, otpRepo)
 	householderService := service.NewHouseholderService(householderRepo, providerRepo, serviceRepo, requestRepo)
 	providerService := service.NewServiceProviderService(providerRepo, requestRepo, serviceRepo)
 	adminService := service.NewAdminService(serviceRepo, requestRepo, userRepo, providerRepo)

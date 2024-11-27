@@ -6,15 +6,18 @@ import (
 	"serviceNest/errs"
 	"serviceNest/interfaces"
 	"serviceNest/model"
+	"serviceNest/repository"
 	"serviceNest/util"
 )
 
 type UserService struct {
+	otpRepo  *repository.OtpRepository
 	userRepo interfaces.UserRepository
 }
 
-func NewUserService(userRepo interfaces.UserRepository) interfaces.UserService {
-	return &UserService{userRepo: userRepo}
+func NewUserService(userRepo interfaces.UserRepository, otpRepo *repository.OtpRepository) interfaces.UserService {
+	return &UserService{userRepo: userRepo,
+		otpRepo: otpRepo}
 }
 
 // View User
@@ -115,4 +118,31 @@ func (s *UserService) ForgetPasword(email string, answer string, updatedPassword
 
 	return nil
 
+}
+
+func (s *UserService) GenerateOtp(email string) error {
+	_, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return err
+	}
+	otp, err := s.otpRepo.GenerateOTP()
+	if err != nil {
+		return err
+	}
+	s.otpRepo.SaveOTP(email, otp)
+
+	return util.SendOTPEmail(email, otp)
+}
+
+func (s *UserService) VerifyAndUpdatePassword(email, otp string, password string) error {
+	valid := s.otpRepo.ValidateOTP(email, otp)
+	if valid == false {
+		return errors.New("Invalid Otp")
+	}
+	err := s.userRepo.UpdatePassword(email, password)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

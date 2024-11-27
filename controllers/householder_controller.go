@@ -136,7 +136,7 @@ func (h *HouseholderController) CancelServiceRequest(w http.ResponseWriter, r *h
 	err := h.householderService.CancelServiceRequest(requestID, householderID)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error cancelling request %v", err), nil)
-		response.ErrorResponse(w, http.StatusInternalServerError, "Internal Server Error", 1006)
+		response.ErrorResponse(w, http.StatusInternalServerError, err.Error(), 1006)
 		return
 	}
 	logger.Info("Request cancelled successfully", nil)

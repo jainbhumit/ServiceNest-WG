@@ -3,11 +3,11 @@ package util
 import (
 	"errors"
 	"github.com/golang-jwt/jwt"
-	"serviceNest/config"
+	"os"
 	"time"
 )
 
-var jwtSecret = []byte(config.SECRET)
+var jwtSecret = []byte(os.Getenv("SECRET"))
 
 func GenerateJWT(userID string, role string) (string, error) {
 	claims := jwt.MapClaims{}

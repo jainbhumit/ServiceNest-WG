@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
 	"log"
+	"os"
 	"sync"
 	"time"
 )
@@ -17,7 +18,7 @@ var (
 func GetMySQLDB() (*sql.DB, error) {
 	var err error
 	once.Do(func() {
-		dsn := DSN
+		dsn := os.Getenv("SQL_DSN")
 		var db *sql.DB
 		db, err = sql.Open("mysql", dsn)
 		if err != nil {

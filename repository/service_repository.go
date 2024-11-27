@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"serviceNest/config"
 	"serviceNest/errs"
 	"serviceNest/interfaces"
@@ -87,12 +88,60 @@ func (repo *ServiceRepository) SaveService(service model.Service) error {
 
 // RemoveService removes a service from the MySQL database
 func (repo *ServiceRepository) RemoveService(serviceID string) error {
-	query := config.DeleteQuery("services", "id", "")
+	// Begin a transaction
+	tx, err := repo.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %v", err)
+	}
 
-	_, err := repo.db.Exec(query, serviceID)
-	query2 := config.DeleteQuery("service_categories", "id", "")
-	_, err = repo.db.Exec(query2, serviceID)
-	return err
+	// Ensure the transaction is rolled back in case of an error
+	defer func() {
+		if p := recover(); p != nil {
+			tx.Rollback()
+			panic(p) // Re-throw panic after rollback
+		} else if err != nil {
+			tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	// Delete from service_provider_details
+	query := config.DeleteQuery("service_provider_details", "service_id", "")
+	_, err = tx.Exec(query, serviceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete from service_provider_details: %v", err)
+	}
+
+	// Delete from service_requests
+	query = config.DeleteQuery("service_requests", "service_id", "")
+	_, err = tx.Exec(query, serviceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete from service_requests: %v", err)
+	}
+
+	// Delete from service_providers_services
+	query = config.DeleteQuery("service_providers_services", "service_id", "")
+	_, err = tx.Exec(query, serviceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete from service_providers_services: %v", err)
+	}
+
+	// Delete from service_categories (if applicable)
+	query = config.DeleteQuery("service_categories", "id", "")
+	_, err = tx.Exec(query, serviceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete from service_categories: %v", err)
+	}
+
+	// Finally, delete from services table
+	query = config.DeleteQuery("services", "id", "")
+	_, err = tx.Exec(query, serviceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete from services: %v", err)
+	}
+
+	return nil
 }
 func (repo *ServiceRepository) GetServiceIdByCategory(category string) (*string, error) {
 	column := []string{"id"}

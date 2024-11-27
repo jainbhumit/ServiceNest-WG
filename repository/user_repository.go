@@ -102,6 +102,20 @@ func (repo *UserRepository) UpdatePassword(userEmail, updatedPassword string) er
 	column := []string{"password"}
 	query := config.UpdateQuery("users", "email", "", column)
 
-	_, err := repo.db.Exec(query, updatedPassword, userEmail)
-	return err
+	result, err := repo.db.Exec(query, updatedPassword, userEmail)
+	if err != nil {
+		return err
+	}
+
+	// Check affected rows
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return errors.New(errs.UserNotFound)
+	}
+
+	return nil
 }

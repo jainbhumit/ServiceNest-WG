@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"log"
 	"serviceNest/errs"
 	"serviceNest/interfaces"
 	"serviceNest/model"
@@ -105,6 +106,7 @@ func (s *HouseholderService) GetServicesByCategory(category string) ([]model.Ser
 		service.ProviderName = provider.Name
 		service.ProviderContact = provider.Contact
 		service.ProviderAddress = provider.Address
+		service.RatingCount = provider.RatingCount
 		filteredServices = append(filteredServices, service)
 
 	}
@@ -132,7 +134,11 @@ func (s *HouseholderService) RequestService(householderID string, serviceName st
 	if err != nil {
 		return "", err
 	}
-	fmt.Print("Householder", householder)
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		log.Printf("Failed to load location: %v", err)
+	}
+	fmt.Println(time.Now().In(location))
 	// Create the service request
 	serviceRequest := model.ServiceRequest{
 		ID:                 requestID,
@@ -143,7 +149,7 @@ func (s *HouseholderService) RequestService(householderID string, serviceName st
 		HouseholderContact: householder.Contact,
 		Description:        description,
 		ServiceID:          *serviceId,
-		RequestedTime:      time.Now(),
+		RequestedTime:      time.Now().In(location),
 		ScheduledTime:      *scheduleTime,
 		Status:             "Pending",
 		ApproveStatus:      false,
@@ -186,6 +192,13 @@ func (s *HouseholderService) CancelServiceRequest(requestID string, householderI
 	if *request.HouseholderID != householderID {
 		return errors.New(errs.RequestNotBelongToHouseholder)
 	}
+
+	// Check if the scheduled time is less than 4 hours away
+	currentTime := time.Now()
+	fmt.Println(request.ScheduledTime, " ", currentTime, " ", request.ScheduledTime.Sub(currentTime))
+	if request.ScheduledTime.Sub(currentTime) < 4*time.Hour {
+		return fmt.Errorf(errs.RequestCancellationTooLate)
+	}
 	if request.Status == "Cancelled" {
 		return fmt.Errorf(errs.RequestAlreadyCancelled)
 	}
@@ -222,6 +235,11 @@ func (s *HouseholderService) ViewServiceRequestStatus(requestID string) (string,
 }
 
 func (s *HouseholderService) AddReview(providerID, householderID, serviceID, comments string, rating float64) error {
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		log.Printf("Failed to load location: %v", err)
+	}
+
 	// Create the review object
 	review := model.Review{
 		ID:            GetUniqueID(),
@@ -230,11 +248,11 @@ func (s *HouseholderService) AddReview(providerID, householderID, serviceID, com
 		HouseholderID: householderID,
 		Rating:        rating,
 		Comments:      comments,
-		ReviewDate:    time.Now(),
+		ReviewDate:    time.Now().In(location),
 	}
 
 	// Save the review in the repository
-	err := s.providerRepo.AddReview(review)
+	err = s.providerRepo.AddReview(review)
 	if err != nil {
 		return err
 	}

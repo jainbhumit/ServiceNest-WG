@@ -278,3 +278,97 @@ func (u *UserController) ForgetPasswordHandler(w http.ResponseWriter, r *http.Re
 	response.SuccessResponse(w, nil, "User password updated successfully", http.StatusOK)
 
 }
+
+func (u *UserController) VerifyOtpAndUpdatePassword(w http.ResponseWriter, r *http.Request) {
+
+	// Parse incoming JSON data
+	var updateData struct {
+		Email    *string `json:"email" validate:"required"`
+		Otp      *string `json:"otp" validate:"required"`
+		Password *string `json:"password" validate:"required"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&updateData); err != nil {
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
+		return
+	}
+
+	err := validate.Struct(updateData)
+
+	if err != nil {
+		logger.Error("Validation error", nil)
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
+		return
+	}
+
+	err = ValidatePassword(*updateData.Password)
+	if err != nil {
+		logger.Error("Error validating password", map[string]interface{}{"email": *updateData.Email})
+		response.ErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("%v", err), 1001)
+
+		return
+	}
+	hashedPassword, err := HashPassword(*updateData.Password)
+	if err != nil {
+		logger.Error("Error hashing password", map[string]interface{}{"email": *updateData.Email})
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error hashing password", 1006)
+		return
+	}
+
+	// Call the UserService to update the user profile
+
+	err1 := u.userService.VerifyAndUpdatePassword(*updateData.Email, *updateData.Otp, hashedPassword)
+	if err1 != nil {
+
+		if err1.Error() == errs.UserNotFound {
+			logger.Error("User not found", nil)
+			response.ErrorResponse(w, http.StatusNotFound, "email doesn't exist", 1008)
+			return
+		} else if err1.Error() == errs.IncorrectSecurityAnswer {
+			logger.Error(err1.Error(), nil)
+			response.ErrorResponse(w, http.StatusUnauthorized, "incorrect security answer", 1007)
+			return
+		} else if err1.Error() == "Invalid Otp" {
+			logger.Error(err1.Error(), nil)
+			response.ErrorResponse(w, http.StatusUnauthorized, "incorrect otp", 1008)
+			return
+		}
+		logger.Error(err1.Error(), nil)
+		response.ErrorResponse(w, http.StatusInternalServerError, "Error updating user", 1006)
+		return
+	}
+	logger.Info("password updated sucessfully", map[string]interface{}{"email": *updateData.Email})
+	response.SuccessResponse(w, nil, "User password updated successfully", http.StatusOK)
+
+}
+
+func (u *UserController) GenerateOtp(w http.ResponseWriter, r *http.Request) {
+
+	// Parse incoming JSON data
+	var updateData struct {
+		Email *string `json:"email" validate:"required"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&updateData); err != nil {
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
+		return
+	}
+
+	err := validate.Struct(updateData)
+
+	if err != nil {
+		logger.Error("Validation error", nil)
+		response.ErrorResponse(w, http.StatusBadRequest, "Invalid request body", 1001)
+		return
+	}
+
+	err1 := u.userService.GenerateOtp(*updateData.Email)
+	if err1 != nil {
+		logger.Error(err1.Error(), nil)
+		response.ErrorResponse(w, http.StatusInternalServerError, err1.Error(), 1006)
+		return
+	}
+	logger.Info("Otp send successfully", map[string]interface{}{"email": *updateData.Email})
+	response.SuccessResponse(w, nil, "Otp Sent successfully", http.StatusOK)
+
+}

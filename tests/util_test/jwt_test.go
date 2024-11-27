@@ -3,7 +3,7 @@ package util_test
 import (
 	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
-	"serviceNest/config"
+	"os"
 	"serviceNest/util"
 	"strings"
 	"testing"
@@ -58,7 +58,7 @@ func TestVerifyJWT_ExpiredToken(t *testing.T) {
 	claims["exp"] = time.Now().Add(-time.Hour * 1).Unix() // Expired 1 hour ago
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	expiredTokenString, _ := token.SignedString([]byte(config.SECRET))
+	expiredTokenString, _ := token.SignedString([]byte(os.Getenv("SECRET")))
 
 	// Verify the expired token
 	_, err := util.VerifyJWT(expiredTokenString)

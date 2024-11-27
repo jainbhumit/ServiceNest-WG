@@ -21,6 +21,9 @@ func SetupRouter(userService interfaces.UserService, householderService interfac
 
 	r.HandleFunc("/forget", userController.ForgetPasswordHandler).Methods("Put")
 
+	r.HandleFunc("/forgot", userController.VerifyOtpAndUpdatePassword).Methods("PUT")
+
+	r.HandleFunc("/otp", userController.GenerateOtp).Methods("POST")
 	// Protected Routes (JWT authentication required)
 	api := r.PathPrefix("/api").Subrouter()
 

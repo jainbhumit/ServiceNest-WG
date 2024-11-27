@@ -221,7 +221,7 @@ func (s *ServiceProviderController) AcceptServiceRequest(w http.ResponseWriter, 
 			response.SuccessResponse(w, nil, "provider not found", 200)
 			return
 		}
-		response.ErrorResponse(w, http.StatusInternalServerError, "Error accepting service request", 1008)
+		response.ErrorResponse(w, http.StatusInternalServerError, err.Error(), 1008)
 		//http.Error(w, "Error accepting service request", http.StatusInternalServerError)
 		return
 	}
