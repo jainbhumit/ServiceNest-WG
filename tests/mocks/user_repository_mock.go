@@ -34,6 +34,20 @@ func (m *MockUserRepository) EXPECT() *MockUserRepositoryMockRecorder {
 	return m.recorder
 }
 
+// DeActivateUser mocks base method.
+func (m *MockUserRepository) DeActivateUser(userID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeActivateUser", userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeActivateUser indicates an expected call of DeActivateUser.
+func (mr *MockUserRepositoryMockRecorder) DeActivateUser(userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeActivateUser", reflect.TypeOf((*MockUserRepository)(nil).DeActivateUser), userID)
+}
+
 // GetUserByEmail mocks base method.
 func (m *MockUserRepository) GetUserByEmail(email string) (*model.User, error) {
 	m.ctrl.T.Helper()

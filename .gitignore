@@ -1,0 +1,6 @@
+.env
+service_category.json
+go.mod
+go.sum
+.idea
+readme

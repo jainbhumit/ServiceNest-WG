@@ -198,7 +198,7 @@ func TestGetProviderDetailByID(t *testing.T) {
 		AddRow(expectedProvider.Name, expectedProvider.Address, expectedProvider.Contact, expectedProvider.Rating)
 
 	// Correct the query expectation by matching it exactly with the repository's query
-	mock.ExpectQuery("SELECT name, address, contact,rating FROM users INNER JOIN service_providers").
+	mock.ExpectQuery("SELECT users.name, users.address, users.contact, service_providers.rating FROM users INNER JOIN service_providers ON users.id = service_providers.user_id WHERE users.id = ?").
 		WithArgs(providerID).
 		WillReturnRows(rows)
 
@@ -314,6 +314,38 @@ func TestAddReview(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
+
+//func TestUpdateProviderRating(t *testing.T) {
+//	db, mock, err := sqlmock.New()
+//	assert.NoError(t, err)
+//	defer db.Close()
+//
+//	repo := repository.NewServiceProviderRepository(db)
+//
+//	providerID := "provider123"
+//	avgRating := 4.5
+//
+//	// Mock the query that calculates the average rating
+//	mock.ExpectQuery("SELECT AVG(rating) FROM reviews WHERE provider_id = ?").
+//		WithArgs(providerID).
+//		WillReturnRows(sqlmock.NewRows([]string{"AVG(rating)"}).AddRow(avgRating))
+//
+//	// Mock the update for service_providers
+//	mock.ExpectExec("UPDATE service_providers").
+//		WithArgs(avgRating, providerID).
+//		WillReturnResult(sqlmock.NewResult(1, 1))
+//
+//	// Mock the update for service_provider_details
+//	mock.ExpectExec("UPDATE service_provider_details").
+//		WithArgs(avgRating, providerID).
+//		WillReturnResult(sqlmock.NewResult(1, 1))
+//
+//	err = repo.UpdateProviderRating(providerID)
+//
+//	assert.NoError(t, err)
+//	assert.NoError(t, mock.ExpectationsWereMet())
+//}
+
 func TestUpdateProviderRating(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -325,9 +357,9 @@ func TestUpdateProviderRating(t *testing.T) {
 	avgRating := 4.5
 
 	// Mock the query that calculates the average rating
-	mock.ExpectQuery("SELECT AVG\\(r.rating\\) FROM reviews").
+	mock.ExpectQuery("(?i)SELECT\\s+AVG\\(rating\\)\\s+FROM\\s+reviews\\s+WHERE\\s+provider_id\\s*=\\s*\\?").
 		WithArgs(providerID).
-		WillReturnRows(sqlmock.NewRows([]string{"AVG(r.rating)"}).AddRow(avgRating))
+		WillReturnRows(sqlmock.NewRows([]string{"AVG(rating)"}).AddRow(avgRating))
 
 	// Mock the update for service_providers
 	mock.ExpectExec("UPDATE service_providers").
@@ -344,6 +376,7 @@ func TestUpdateProviderRating(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
+
 func TestGetReviewsByProviderID(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.NoError(t, err)
@@ -472,7 +505,7 @@ func TestGetProvidersByServiceType_Success(t *testing.T) {
 
 	// Expect the query and return rows
 	query := regexp.QuoteMeta(`
-		SELECT sp.user_id, sp.rating, sp.availability, sp.is_active 
+		SELECT sp.user_id, sp.rating, sp.availability, sp.is_active
 		FROM service_providers sp
 		INNER JOIN service_providers_services sps ON sp.user_id = sps.service_provider_id
 		INNER JOIN services s ON sps.service_id = s.id
@@ -525,6 +558,7 @@ func TestUpdateServiceProvider_Success(t *testing.T) {
 	err = mock.ExpectationsWereMet()
 	assert.NoError(t, err)
 }
+
 func TestGetProviderByServiceID_Success(t *testing.T) {
 	// Create a new SQL mock database
 	db, mock, err := sqlmock.New()
@@ -536,10 +570,10 @@ func TestGetProviderByServiceID_Success(t *testing.T) {
 
 	// Define expected rows and mock the query
 	query := `
-	SELECT sp.user_id, sp.rating, sp.availability, sp.is_active 
-	FROM service_providers sp
-	INNER JOIN service_providers_services sps ON sp.user_id = sps.service_provider_id
-	WHERE sps.service_id = ?
+	SELECT service_providers.user_id, service_providers.rating, service_providers.availability, service_providers.is_active
+	FROM service_providers 
+	INNER JOIN service_providers_services  ON service_providers.user_id = service_providers_services.service_provider_id
+	WHERE service_providers_services.service_id = ?
 	`
 	rows := sqlmock.NewRows([]string{"user_id", "rating", "availability", "is_active"}).
 		AddRow("provider1", 4.5, true, true)
@@ -569,10 +603,10 @@ func TestGetProviderByServiceID_ProviderNotFound(t *testing.T) {
 
 	// Define the mock query to return no rows
 	query := `
-	SELECT sp.user_id, sp.rating, sp.availability, sp.is_active 
-	FROM service_providers sp
-	INNER JOIN service_providers_services sps ON sp.user_id = sps.service_provider_id
-	WHERE sps.service_id = ?
+	SELECT service_providers.user_id, service_providers.rating, service_providers.availability, service_providers.is_active
+	FROM service_providers 
+	INNER JOIN service_providers_services  ON service_providers.user_id = service_providers_services.service_provider_id
+	WHERE service_providers_services.service_id = ?
 	`
 	mock.ExpectQuery(query).WithArgs("service1").WillReturnRows(sqlmock.NewRows([]string{}))
 
@@ -596,10 +630,10 @@ func TestGetProviderByServiceID_QueryError(t *testing.T) {
 
 	// Define the mock query to return an error
 	query := `
-	SELECT sp.user_id, sp.rating, sp.availability, sp.is_active 
-	FROM service_providers sp
-	INNER JOIN service_providers_services sps ON sp.user_id = sps.service_provider_id
-	WHERE sps.service_id = ?
+	SELECT service_providers.user_id, service_providers.rating, service_providers.availability, service_providers.is_active
+	FROM service_providers 
+	INNER JOIN service_providers_services  ON service_providers.user_id = service_providers_services.service_provider_id
+	WHERE service_providers_services.service_id = ?
 	`
 	mock.ExpectQuery(query).WithArgs("service1").WillReturnError(errors.New("query error"))
 
@@ -620,7 +654,7 @@ func TestGetProviderDetailByID_ProviderNotFound(t *testing.T) {
 	repo := repository.NewServiceProviderRepository(db)
 
 	providerID := "provider123"
-	query := "SELECT name, address, contact,rating FROM users INNER JOIN service_providers ON id=user_id WHERE id = ?"
+	query := "SELECT users.name, users.address, users.contact, service_providers.rating FROM users INNER JOIN service_providers ON users.id = service_providers.user_id WHERE users.id = ?"
 	mock.ExpectQuery(query).
 		WithArgs(providerID).
 		WillReturnRows(sqlmock.NewRows([]string{}))
@@ -639,7 +673,7 @@ func TestGetProviderDetailByID_QueryError(t *testing.T) {
 	repo := repository.NewServiceProviderRepository(db)
 
 	providerID := "provider123"
-	query := "SELECT name, address, contact,rating FROM users INNER JOIN service_providers ON id=user_id WHERE id = ?"
+	query := "SELECT users.name, users.address, users.contact, service_providers.rating FROM users INNER JOIN service_providers ON users.id = service_providers.user_id WHERE users.id = ?"
 	mock.ExpectQuery(query).
 		WithArgs(providerID).
 		WillReturnError(errors.New("query error"))
@@ -649,4 +683,72 @@ func TestGetProviderDetailByID_QueryError(t *testing.T) {
 	assert.Nil(t, provider)
 	assert.EqualError(t, err, "query error")
 	assert.NoError(t, mock.ExpectationsWereMet())
+}
+func TestAddReviewAll(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	repo := repository.NewServiceProviderRepository(db)
+
+	review := model.Review{
+		ID:            "review123",
+		ProviderID:    "provider123",
+		ServiceID:     "service123",
+		HouseholderID: "householder123",
+		Rating:        4,
+		Comments:      "Great service",
+		ReviewDate:    time.Now(),
+	}
+
+	t.Run("Successful Review Addition", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec("INSERT INTO reviews").
+			WithArgs(review.ID, review.ProviderID, review.ServiceID, review.HouseholderID, review.Rating, review.Comments, sqlmock.AnyArg()).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+
+		err = repo.AddReview(review)
+
+		assert.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("Transaction Begin Error", func(t *testing.T) {
+		mock.ExpectBegin().WillReturnError(errors.New("begin error"))
+
+		err = repo.AddReview(review)
+
+		assert.Error(t, err)
+		assert.Equal(t, "begin error", err.Error())
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("SQL Execution Error", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec("INSERT INTO reviews").
+			WithArgs(review.ID, review.ProviderID, review.ServiceID, review.HouseholderID, review.Rating, review.Comments, sqlmock.AnyArg()).
+			WillReturnError(errors.New("execution error"))
+		mock.ExpectRollback()
+
+		err = repo.AddReview(review)
+
+		assert.Error(t, err)
+		assert.Equal(t, "execution error", err.Error())
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("Transaction Commit Error", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec("INSERT INTO reviews").
+			WithArgs(review.ID, review.ProviderID, review.ServiceID, review.HouseholderID, review.Rating, review.Comments, sqlmock.AnyArg()).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit().WillReturnError(errors.New("commit error"))
+
+		err = repo.AddReview(review)
+
+		assert.Error(t, err)
+		assert.Equal(t, "commit error", err.Error())
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
 }

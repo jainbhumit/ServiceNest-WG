@@ -80,7 +80,7 @@ func TestDeactivateAccount(t *testing.T) {
 			assert.False(t, p.IsActive)
 		}).
 		Return(nil)
-
+	mockUserRepo.EXPECT().DeActivateUser(userID).Return(nil)
 	err := adminService.DeactivateAccount(userID)
 	assert.NoError(t, err)
 }

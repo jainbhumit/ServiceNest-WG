@@ -3,17 +3,21 @@ package service
 import (
 	"errors"
 	"fmt"
+	"serviceNest/errs"
 	"serviceNest/interfaces"
 	"serviceNest/model"
+	"serviceNest/repository"
 	"serviceNest/util"
 )
 
 type UserService struct {
+	otpRepo  *repository.OtpRepository
 	userRepo interfaces.UserRepository
 }
 
-func NewUserService(userRepo interfaces.UserRepository) *UserService {
-	return &UserService{userRepo: userRepo}
+func NewUserService(userRepo interfaces.UserRepository, otpRepo *repository.OtpRepository) interfaces.UserService {
+	return &UserService{userRepo: userRepo,
+		otpRepo: otpRepo}
 }
 
 // View User
@@ -76,6 +80,68 @@ func (s *UserService) UpdateUser(userID string, newEmail, newPassword, newAddres
 	// Save the updated user back to the repository_test
 	if err := s.userRepo.UpdateUser(user); err != nil {
 		return fmt.Errorf("could not update user: %v", err)
+	}
+
+	return nil
+}
+
+func (s *UserService) CheckUserExists(email string) (*model.User, error) {
+	user, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return nil, fmt.Errorf("could not find user: %v", err)
+	}
+	return user, nil
+}
+
+func (s *UserService) CreateUser(user *model.User) error {
+	user.ID = util.GenerateUUID()
+	err := s.userRepo.SaveUser(user)
+	if err != nil {
+		return fmt.Errorf("could not save user: %v", err)
+	}
+	return nil
+}
+
+func (s *UserService) ForgetPasword(email string, answer string, updatedPassword string) error {
+	securityAnswer, err := s.userRepo.GetSecurityAnswerByEmail(email)
+	if err != nil {
+		return err
+	}
+	if *securityAnswer != answer {
+		return fmt.Errorf(errs.IncorrectSecurityAnswer)
+	}
+
+	err = s.userRepo.UpdatePassword(email, updatedPassword)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
+func (s *UserService) GenerateOtp(email string) error {
+	_, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return err
+	}
+	otp, err := s.otpRepo.GenerateOTP()
+	if err != nil {
+		return err
+	}
+	s.otpRepo.SaveOTP(email, otp)
+
+	return util.SendOTPEmail(email, otp)
+}
+
+func (s *UserService) VerifyAndUpdatePassword(email, otp string, password string) error {
+	valid := s.otpRepo.ValidateOTP(email, otp)
+	if valid == false {
+		return errors.New("Invalid Otp")
+	}
+	err := s.userRepo.UpdatePassword(email, password)
+	if err != nil {
+		return err
 	}
 
 	return nil

@@ -143,6 +143,102 @@ func TestUpdateUser(t *testing.T) {
 	}
 }
 
+func TestCheckUserExists(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserRepo := mocks.NewMockUserRepository(ctrl)
+	userService := service.NewUserService(mockUserRepo)
+	user := &model.User{
+		ID:       "userId",
+		Name:     "username",
+		Email:    "email@example.com",
+		Address:  "address",
+		Contact:  "933648383",
+		IsActive: true,
+	}
+
+	tests := []struct {
+		name               string
+		mockGetUserByEmail func(*mocks.MockUserRepository)
+		expectedUser       *model.User
+		expectedError      error
+	}{
+		{
+			name: "user exist",
+			mockGetUserByEmail: func(m *mocks.MockUserRepository) {
+				m.EXPECT().GetUserByEmail(user.Email).Return(user, nil)
+			},
+			expectedUser:  user,
+			expectedError: nil,
+		},
+		{
+			name: "user does not exist",
+			mockGetUserByEmail: func(m *mocks.MockUserRepository) {
+				m.EXPECT().GetUserByEmail(user.Email).Return(nil, errors.New("user not found"))
+			},
+			expectedUser:  nil,
+			expectedError: errors.New("could not find user: user not found"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.mockGetUserByEmail(mockUserRepo)
+			res, err := userService.CheckUserExists(user.Email)
+			assert.Equal(t, tt.expectedUser, res)
+			assert.Equal(t, tt.expectedError, err)
+		})
+	}
+
+}
+func TestCreateUser(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserRepo := mocks.NewMockUserRepository(ctrl)
+	userService := service.NewUserService(mockUserRepo)
+	user := &model.User{
+		Name:    "John Doe",
+		Email:   "johndoe@example.com",
+		Address: "123 Main St",
+		Contact: "1234567890",
+	}
+
+	tests := []struct {
+		name          string
+		mockSaveUser  func(*mocks.MockUserRepository)
+		expectedError error
+	}{
+		{
+			name: "successful user creation",
+			mockSaveUser: func(m *mocks.MockUserRepository) {
+				m.EXPECT().SaveUser(user).Return(nil)
+			},
+			expectedError: nil,
+		},
+		{
+			name: "failed to save user",
+			mockSaveUser: func(m *mocks.MockUserRepository) {
+				m.EXPECT().SaveUser(user).Return(errors.New("db error"))
+			},
+			expectedError: errors.New("could not save user: db error"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Mock behavior
+			tt.mockSaveUser(mockUserRepo)
+
+			// Call CreateUser
+			err := userService.CreateUser(user)
+
+			// Assert results
+			assert.Equal(t, tt.expectedError, err)
+		})
+	}
+}
+
 // Helper function to get pointer of string
 func stringPtr(s string) *string {
 	return &s

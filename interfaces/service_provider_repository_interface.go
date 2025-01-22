@@ -8,11 +8,13 @@ type ServiceProviderRepository interface {
 	GetProvidersByServiceType(serviceType string) ([]model.ServiceProvider, error)
 	GetProviderByID(providerID string) (*model.ServiceProvider, error)
 	SaveServiceProvider(provider model.ServiceProvider) error
-	GetProviderDetailByID(providerID string) (*model.ServiceProviderDetails, error)
-	SaveServiceProviderDetail(provider *model.ServiceProviderDetails, requestID string) error
+	GetProviderDetailByID(providerID string, serviceId string) (*model.ServiceProviderDetails, error)
+	SaveServiceProviderDetail(provider *model.ServiceProviderDetails, requestID string, serviceID string) error
 	UpdateServiceProviderDetailByRequestID(provider *model.ServiceProviderDetails, requestID string) error
 	IsProviderApproved(providerID string) (bool, error)
 	AddReview(review model.Review) error
-	UpdateProviderRating(providerID string) error
-	GetReviewsByProviderID(providerID string) ([]model.Review, error)
+	UpdateProviderRating(providerID string, serviceId string, rating float64) error
+	GetReviewsByProviderID(providerID string, limit, offset int, serviceID string) ([]model.Review, error)
+	AddServiceToProvider(providerID, serviceID string) error
+	DeleteServicesByProviderID(userID string) error
 }

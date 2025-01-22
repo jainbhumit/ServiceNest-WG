@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/fatih/color"
 	"serviceNest/interfaces"
 	"serviceNest/model"
 )
@@ -15,7 +14,7 @@ type ServiceProviderService struct {
 }
 
 // NewServiceProviderService initializes a new ServiceProviderService
-func NewServiceProviderService(serviceProviderRepo interfaces.ServiceProviderRepository, serviceRequestRepo interfaces.ServiceRequestRepository, serviceRepo interfaces.ServiceRepository) *ServiceProviderService {
+func NewServiceProviderService(serviceProviderRepo interfaces.ServiceProviderRepository, serviceRequestRepo interfaces.ServiceRequestRepository, serviceRepo interfaces.ServiceRepository) interfaces.ServiceProviderService {
 	return &ServiceProviderService{
 		serviceProviderRepo: serviceProviderRepo,
 		serviceRequestRepo:  serviceRequestRepo,
@@ -23,25 +22,51 @@ func NewServiceProviderService(serviceProviderRepo interfaces.ServiceProviderRep
 	}
 }
 
-// AddService adds a new service_test to the provider's list of offered services
-func (s *ServiceProviderService) AddService(providerID string, newService model.Service) error {
-	// Get the service_test provider
-	provider, err := s.serviceProviderRepo.GetProviderByID(providerID)
+// // AddService adds a new service to the provider's list of offered services
+//func (s *ServiceProviderService) AddService(providerID string, newService model.Service) error {
+//	// Get the service provider
+//	provider, err := s.serviceProviderRepo.GetProviderByID(providerID)
+//	if err != nil {
+//		return err
+//	}
+//
+//	// Add the new service_test to the provider's list
+//	provider.ServicesOffered = append(provider.ServicesOffered, newService)
+//
+//	// Save the updated service_test provider information
+//	err = s.serviceProviderRepo.UpdateServiceProvider(provider)
+//	if err != nil {
+//		return err
+//	}
+//
+//	// Save the new service_test to the service_test repository_test
+//	return s.serviceRepo.SaveService(newService)
+//}
+
+// AddService associates a predefined service to a provider’s offerings using CategoryID.
+func (s *ServiceProviderService) AddService(providerID string, newService model.Service) (string, error) {
+	// Retrieve the service by its category ID
+	serviceId, err := s.serviceRepo.GetServiceIdByCategory(newService.Category)
 	if err != nil {
-		return err
+		return "", err
+	}
+	if serviceId == nil {
+		return "", errors.New("service for specified category does not exist")
+	}
+	newService.ID = *serviceId
+	newService.AvgRating = 0
+	newService.RatingCount = 0
+	err = s.serviceRepo.SaveService(newService)
+	if err != nil {
+		return "", err
+	}
+	// Link the retrieved service with the provider in the service_providers_services table
+	err = s.serviceProviderRepo.AddServiceToProvider(providerID, newService.ID)
+	if err != nil {
+		return "", err
 	}
 
-	// Add the new service_test to the provider's list
-	provider.ServicesOffered = append(provider.ServicesOffered, newService)
-
-	// Save the updated service_test provider information
-	err = s.serviceProviderRepo.UpdateServiceProvider(provider)
-	if err != nil {
-		return err
-	}
-
-	// Save the new service_test to the service_test repository_test
-	return s.serviceRepo.SaveService(newService)
+	return *serviceId, nil
 }
 
 // UpdateService updates an existing service_test offered by the provider
@@ -55,8 +80,8 @@ func (s *ServiceProviderService) UpdateService(providerID, serviceID string, upd
 	// Update the service in the service repository
 	return nil
 }
-func (s *ServiceProviderService) GetAllServiceRequests() ([]model.ServiceRequest, error) {
-	return s.serviceRequestRepo.GetAllServiceRequests()
+func (s *ServiceProviderService) GetAllServiceRequests(providerId string, serviceID string, limit, offset int) ([]model.ServiceRequest, error) {
+	return s.serviceRequestRepo.GetAllPendingRequestsByProvider(providerId, serviceID, limit, offset)
 }
 
 func (s *ServiceProviderService) RemoveService(providerID, serviceID string) error {
@@ -67,7 +92,7 @@ func (s *ServiceProviderService) RemoveService(providerID, serviceID string) err
 	return nil
 }
 
-func (s *ServiceProviderService) AcceptServiceRequest(providerID, requestID string) error {
+func (s *ServiceProviderService) AcceptServiceRequest(providerID, requestID string, estimatedPrice string) error {
 	serviceRequest, err := s.serviceRequestRepo.GetServiceRequestByID(requestID)
 	if err != nil {
 		return err
@@ -81,18 +106,12 @@ func (s *ServiceProviderService) AcceptServiceRequest(providerID, requestID stri
 	serviceRequest.Status = "Accepted"
 
 	// Get the ServiceProvider details
-	provider, err := s.serviceProviderRepo.GetProviderDetailByID(providerID)
+	provider, err := s.serviceProviderRepo.GetProviderDetailByID(providerID, serviceRequest.ServiceID)
 	if err != nil {
 		return err
 	}
-	providerReviews, err := s.serviceProviderRepo.GetReviewsByProviderID(providerID)
-	if err != nil {
-		return err
-	}
+
 	provider.ServiceProviderID = providerID
-	var estimatedPrice string
-	color.Cyan("Enter the Price for service:")
-	fmt.Scanln(&estimatedPrice)
 
 	provider.Price = estimatedPrice
 
@@ -104,13 +123,12 @@ func (s *ServiceProviderService) AcceptServiceRequest(providerID, requestID stri
 		Address:           provider.Address,
 		Price:             estimatedPrice,
 		Rating:            provider.Rating,
-		Reviews:           providerReviews,
 	})
 
 	// Save the updated service request
 	err = s.serviceRequestRepo.UpdateServiceRequest(serviceRequest)
 
-	err = s.serviceProviderRepo.SaveServiceProviderDetail(provider, requestID)
+	err = s.serviceProviderRepo.SaveServiceProviderDetail(provider, requestID, serviceRequest.ServiceID)
 	if err != nil {
 		return err
 	}
@@ -173,35 +191,23 @@ func (s *ServiceProviderService) GetServiceByID(serviceID string) (*model.Servic
 	return s.serviceRepo.GetServiceByID(serviceID)
 }
 
-func (s *ServiceProviderService) ViewApprovedRequestsByHouseholder(providerID string) ([]model.ServiceRequest, error) {
+func (s *ServiceProviderService) ViewApprovedRequestsByProvider(providerID string, limit, offset int, sortOrder string) ([]model.ServiceRequest, error) {
 	// Fetch all service requests related to the provider
-	serviceRequests, err := s.serviceRequestRepo.GetServiceRequestsByProviderID(providerID)
+	serviceRequests, err := s.serviceRequestRepo.GetServiceRequestsByProviderID(providerID, limit, offset, sortOrder)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve service requests: %v", err)
 	}
+	fmt.Println(serviceRequests)
 
-	// Filter out only the approved requests
-	var approvedRequests []model.ServiceRequest
-	for _, req := range serviceRequests {
-		if req.ApproveStatus {
-			for _, providerDetail := range req.ProviderDetails {
-				if providerDetail.ServiceProviderID == providerID && providerDetail.Approve {
-					approvedRequests = append(approvedRequests, req)
-					break
-				}
-			}
-		}
-	}
-
-	if len(approvedRequests) == 0 {
+	if len(serviceRequests) == 0 {
 		return nil, errors.New("no approved requests found for this provider")
 	}
 
-	return approvedRequests, nil
+	return serviceRequests, nil
 }
 
-func (s *ServiceProviderService) GetReviews(providerID string) ([]model.Review, error) {
-	reviews, err := s.serviceProviderRepo.GetReviewsByProviderID(providerID)
+func (s *ServiceProviderService) GetReviews(providerID string, limit, offset int, serviceID string) ([]model.Review, error) {
+	reviews, err := s.serviceProviderRepo.GetReviewsByProviderID(providerID, limit, offset, serviceID)
 	if err != nil {
 		return nil, err
 	}

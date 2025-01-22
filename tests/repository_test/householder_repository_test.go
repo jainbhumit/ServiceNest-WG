@@ -21,21 +21,19 @@ func TestSaveHouseholder(t *testing.T) {
 	// Create a test householder
 	householder := &model.Householder{
 		User: model.User{
-			ID:        "1",
-			Name:      "John Doe",
-			Email:     "john@example.com",
-			Password:  "password123",
-			Role:      "householder",
-			Address:   "123 Main St",
-			Contact:   "1234567890",
-			Latitude:  37.7749,
-			Longitude: -122.4194,
+			ID:       "1",
+			Name:     "John Doe",
+			Email:    "john@example.com",
+			Password: "password123",
+			Role:     "householder",
+			Address:  "123 Main St",
+			Contact:  "1234567890",
 		},
 	}
 
 	// Set up the expectation for the INSERT query
 	mock.ExpectExec("INSERT INTO users").
-		WithArgs(householder.ID, householder.Name, householder.Email, householder.Password, householder.Role, householder.Address, householder.Contact, householder.Latitude, householder.Longitude).
+		WithArgs(householder.ID, householder.Name, householder.Email, householder.Password, householder.Role, householder.Address, householder.Contact).
 		WillReturnResult(sqlmock.NewResult(1, 1)) // Return result as if one row was inserted
 
 	// Call the method under test
@@ -58,23 +56,21 @@ func TestGetHouseholderByID(t *testing.T) {
 	// Create the expected householder
 	expectedHouseholder := &model.Householder{
 		User: model.User{
-			ID:        "1",
-			Name:      "John Doe",
-			Email:     "john@example.com",
-			Password:  "password123",
-			Role:      "householder",
-			Address:   "123 Main St",
-			Contact:   "1234567890",
-			Latitude:  37.7749,
-			Longitude: -122.4194,
+			ID:       "1",
+			Name:     "John Doe",
+			Email:    "john@example.com",
+			Password: "password123",
+			Role:     "householder",
+			Address:  "123 Main St",
+			Contact:  "1234567890",
 		},
 	}
 
 	// Set up the expectation for the SELECT query
-	rows := sqlmock.NewRows([]string{"id", "name", "email", "password", "role", "address", "contact", "latitude", "longitude"}).
-		AddRow(expectedHouseholder.ID, expectedHouseholder.Name, expectedHouseholder.Email, expectedHouseholder.Password, expectedHouseholder.Role, expectedHouseholder.Address, expectedHouseholder.Contact, expectedHouseholder.Latitude, expectedHouseholder.Longitude)
+	rows := sqlmock.NewRows([]string{"id", "name", "email", "password", "role", "address", "contact"}).
+		AddRow(expectedHouseholder.ID, expectedHouseholder.Name, expectedHouseholder.Email, expectedHouseholder.Password, expectedHouseholder.Role, expectedHouseholder.Address, expectedHouseholder.Contact)
 
-	mock.ExpectQuery("SELECT id, name, email, password, role, address, contact, latitude, longitude FROM users WHERE id = ?").
+	mock.ExpectQuery("SELECT id, name, email, password, role, address, contact FROM users WHERE id = ?").
 		WithArgs(expectedHouseholder.ID).
 		WillReturnRows(rows)
 
